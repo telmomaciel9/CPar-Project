@@ -9,6 +9,7 @@ MD.exe: $(SRC)/MD.cpp
 
 clean:
 	rm ./MD.exe
+	rm cp_*
 
 run:
 	./MD.exe < inputdata.txt

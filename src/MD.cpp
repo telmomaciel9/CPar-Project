@@ -58,6 +58,8 @@ double a[MAXPART][3];
 //  Force
 double F[MAXPART][3];
 
+#define MaxN 2160
+
 // atom type
 char atype[10];
 //  Function prototypes
@@ -362,6 +364,7 @@ int main()
 }
 
 
+
 void initialize() {
     int n, p, i, j, k;
     double pos;
@@ -455,31 +458,65 @@ double Kinetic() { //Write Function here!
     
 }
 
+void transposeMatrix(double r[MAXPART][3], double trans[3][MaxN]) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < MaxN; j++) {
+            trans[i][j] = r[j][i];
+        }
+    }
+}
 
 // Function to calculate the potential energy of the system
 double Potential() {
     double quot, r2, rnorm, term1, term2, Pot;
     int i, j, k;
-    
+
+    double trans[3][MaxN];
+
+    transposeMatrix(r, trans);
+
     Pot=0.;
     for (i=0; i<N; i++) {
-        for (j=0; j<N; j++) {
+        for (j=0; j<i; j++) {
             
-            if (j!=i) {
                 r2=0.;
 
-                double r2 = (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]) +
-                            (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]) +
-                            (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
+                double r2 = (trans[0][i] - trans[0][j]) * (trans[0][i] - trans[0][j]) +
+                            (trans[1][i] - trans[1][j]) * (trans[1][i] - trans[1][j]) +
+                            (trans[2][i] - trans[2][j]) * (trans[2][i] - trans[2][j]);
 
-                rnorm=sqrt(r2); 
-                quot=sigma/rnorm;
-                term1 = quot*quot*quot*quot*quot*quot*quot*quot*quot*quot*quot*quot;
-                term2 = quot*quot*quot*quot*quot*quot;
+                //rnorm=sqrt(r2); 
+                //quot=sigma/sqrt(r2);
+                //term2 = quot*quot*quot*quot*quot*quot;
+                quot=sigma/(r2);
+                term2 = quot*quot*quot;
+                term1 = term2 * term2;
                 
-                Pot += 4*epsilon*(term1 - term2);
+                //Pot += 4*epsilon*(term1 - term2);
+                Pot += 4.*(term1 - term2);
                 
-            }
+
+        }
+
+        for (j=i+1; j<N; j++) {
+        
+                r2=0.;
+
+                double r2 = (trans[0][i] - trans[0][j]) * (trans[0][i] - trans[0][j]) +
+                            (trans[1][i] - trans[1][j]) * (trans[1][i] - trans[1][j]) +
+                            (trans[2][i] - trans[2][j]) * (trans[2][i] - trans[2][j]);
+
+                //rnorm=sqrt(r2); 
+                //quot=sigma/sqrt(r2);
+                //term2 = quot*quot*quot*quot*quot*quot;
+                quot=sigma/(r2);
+                term2 = quot*quot*quot;
+                term1 = term2 * term2;  
+                
+                //Pot += 4*epsilon*(term1 - term2);
+                Pot += 4.*(term1 - term2);
+                
+
         }
     }
     
@@ -675,3 +712,4 @@ double gaussdist() {
         
     }
 }
+
