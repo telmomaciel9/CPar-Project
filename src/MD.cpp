@@ -467,13 +467,15 @@ double Potential() {
             
             if (j!=i) {
                 r2=0.;
-                for (k=0; k<3; k++) {
-                    r2 += (r[i][k]-r[j][k])*(r[i][k]-r[j][k]);
-                }
-                rnorm=sqrt(r2);
+
+                double r2 = (r[i][0] - r[j][0]) * (r[i][0] - r[j][0]) +
+                            (r[i][1] - r[j][1]) * (r[i][1] - r[j][1]) +
+                            (r[i][2] - r[j][2]) * (r[i][2] - r[j][2]);
+
+                rnorm=sqrt(r2); 
                 quot=sigma/rnorm;
-                term1 = pow(quot,12.);
-                term2 = pow(quot,6.);
+                term1 = quot*quot*quot*quot*quot*quot*quot*quot*quot*quot*quot*quot;
+                term2 = quot*quot*quot*quot*quot*quot;
                 
                 Pot += 4*epsilon*(term1 - term2);
                 
@@ -496,9 +498,9 @@ void computeAccelerations() {
     
     
     for (i = 0; i < N; i++) {  // set all accelerations to zero
-        for (k = 0; k < 3; k++) {
-            a[i][k] = 0;
-        }
+        a[i][0] = 0;
+        a[i][1] = 0;
+        a[i][2] = 0;
     }
     for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
         for (j = i+1; j < N; j++) {
@@ -513,12 +515,17 @@ void computeAccelerations() {
             }
             
             //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
-            f = 24 * (2 * pow(rSqd, -7) - pow(rSqd, -4));
-            for (k = 0; k < 3; k++) {
-                //  from F = ma, where m = 1 in natural units!
-                a[i][k] += rij[k] * f;
-                a[j][k] -= rij[k] * f;
-            }
+            if (rSqd > 0) { // Evitar divisão por zero
+                double invRSqd = 1.0 / rSqd;
+                f = 24 * (2 * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd - invRSqd * invRSqd * invRSqd * invRSqd);
+                
+                for (k = 0; k < 3; k++) {
+                    //  from F = ma, where m = 1 in natural units!
+                    double force = rij[k] * f;
+                    a[i][k] += force;
+                    a[j][k] -= force;
+                }
+            }    
         }
     }
 }
