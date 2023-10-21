@@ -458,10 +458,10 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[MAXPART][3], double trans[3][MaxN]) {
+void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < MaxN; j++) {
-            trans[i][j] = r[j][i];
+            transR[i][j] = r[j][i];
         }
     }
 }
@@ -469,11 +469,11 @@ void transposeMatrix(double r[MAXPART][3], double trans[3][MaxN]) {
 // Function to calculate the potential energy of the system
 double Potential() {
     double quot, r2, rnorm, term1, term2, Pot;
-    int i, j, k;
+    int i, j;
 
-    double trans[3][MaxN];
+    double transR[3][MaxN];
 
-    transposeMatrix(r, trans);
+    transposeMatrix(r, transR);
 
     Pot=0.;
     for (i=0; i<N; i++) {
@@ -481,9 +481,9 @@ double Potential() {
             
                 r2=0.;
 
-                double r2 = (trans[0][i] - trans[0][j]) * (trans[0][i] - trans[0][j]) +
-                            (trans[1][i] - trans[1][j]) * (trans[1][i] - trans[1][j]) +
-                            (trans[2][i] - trans[2][j]) * (trans[2][i] - trans[2][j]);
+                r2 += (transR[0][i] - transR[0][j]) * (transR[0][i] - transR[0][j]); 
+                r2 += (transR[1][i] - transR[1][j]) * (transR[1][i] - transR[1][j]); 
+                r2 += (transR[2][i] - transR[2][j]) * (transR[2][i] - transR[2][j]);
 
                 //rnorm=sqrt(r2); 
                 //quot=sigma/sqrt(r2);
@@ -502,9 +502,9 @@ double Potential() {
         
                 r2=0.;
 
-                double r2 = (trans[0][i] - trans[0][j]) * (trans[0][i] - trans[0][j]) +
-                            (trans[1][i] - trans[1][j]) * (trans[1][i] - trans[1][j]) +
-                            (trans[2][i] - trans[2][j]) * (trans[2][i] - trans[2][j]);
+                r2 += (transR[0][i] - transR[0][j]) * (transR[0][i] - transR[0][j]); 
+                r2 += (transR[1][i] - transR[1][j]) * (transR[1][i] - transR[1][j]); 
+                r2 += (transR[2][i] - transR[2][j]) * (transR[2][i] - transR[2][j]);
 
                 //rnorm=sqrt(r2); 
                 //quot=sigma/sqrt(r2);
@@ -529,10 +529,14 @@ double Potential() {
 //   the forces on each atom.  Then uses a = F/m to calculate the
 //   accelleration of each atom. 
 void computeAccelerations() {
-    int i, j, k;
-    double f, rSqd;
+    int i, j;
+    double f, rSqd, force;
+    double r0, r1, r2;
+    double invRSqd, invRSqd3, invRSqd4;
     double rij[3]; // position of i relative to j
     
+    double transR[3][MaxN];
+    transposeMatrix(r, transR);
     
     for (i = 0; i < N; i++) {  // set all accelerations to zero
         a[i][0] = 0;
@@ -540,29 +544,45 @@ void computeAccelerations() {
         a[i][2] = 0;
     }
     for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
+        r0 = transR[0][i];
+        r1 = transR[1][i];
+        r2 = transR[2][i];
+
         for (j = i+1; j < N; j++) {
             // initialize r^2 to zero
-            rSqd = 0;
+                rSqd = 0;
             
-            for (k = 0; k < 3; k++) {
                 //  component-by-componenent position of i relative to j
-                rij[k] = r[i][k] - r[j][k];
+                rij[0] = r0 - transR[0][j];
+                rij[1] = r1 - transR[1][j];
+                rij[2] = r2 - transR[2][j];
                 //  sum of squares of the components
-                rSqd += rij[k] * rij[k];
-            }
+                rSqd += rij[0] * rij[0];
+                rSqd += rij[1] * rij[1];
+                rSqd += rij[2] * rij[2];
+
             
             //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
-            if (rSqd > 0) { // Evitar divisão por zero
-                double invRSqd = 1.0 / rSqd;
-                f = 24 * (2 * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd * invRSqd - invRSqd * invRSqd * invRSqd * invRSqd);
+                invRSqd = 1.0 / rSqd;
+                invRSqd3 = invRSqd*invRSqd*invRSqd;
+                invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
+
+                f = 24 * (2 * (invRSqd4 * invRSqd3) - invRSqd4);
                 
-                for (k = 0; k < 3; k++) {
-                    //  from F = ma, where m = 1 in natural units!
-                    double force = rij[k] * f;
-                    a[i][k] += force;
-                    a[j][k] -= force;
-                }
-            }    
+
+                //  from F = ma, where m = 1 in natural units!
+                force = rij[0] * f;
+                a[i][0] += force;
+                a[j][0] -= force;
+
+                force = rij[1] * f;
+                a[i][1] += force;
+                a[j][1] -= force;
+
+                force = rij[2] * f;
+                a[i][2] += force;
+                a[j][2] -= force;
+   
         }
     }
 }
