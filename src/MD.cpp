@@ -468,8 +468,10 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
 
 // Function to calculate the potential energy of the system
 double Potential() {
-    double quot, r2, rnorm, term1, term2, Pot;
+    double quot, rnorm, term1, term2, Pot;
     int i, j;
+    double r0, r1, r2;
+    double rx, ry, rz, tot;
 
     double transR[3][MaxN];
 
@@ -477,18 +479,25 @@ double Potential() {
 
     Pot=0.;
     for (i=0; i<N; i++) {
+
+        //r0 = transR[0][i] ;
+        //r1 = transR[1][i] ;
+        //r2 = transR[2][i] ;
+
         for (j=0; j<i; j++) {
             
                 r2=0.;
 
-                r2 += (transR[0][i] - transR[0][j]) * (transR[0][i] - transR[0][j]); 
-                r2 += (transR[1][i] - transR[1][j]) * (transR[1][i] - transR[1][j]); 
-                r2 += (transR[2][i] - transR[2][j]) * (transR[2][i] - transR[2][j]);
+                rx = (transR[0][i] - transR[0][j]); 
+                ry = (transR[1][i] - transR[1][j]); 
+                rz = (transR[2][i] - transR[2][j]);
+
+                tot = rx*rx + ry*ry + rz*rz;
 
                 //rnorm=sqrt(r2); 
                 //quot=sigma/sqrt(r2);
                 //term2 = quot*quot*quot*quot*quot*quot;
-                quot=sigma/(r2);
+                quot=sigma/(tot);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;
                 
@@ -502,14 +511,16 @@ double Potential() {
         
                 r2=0.;
 
-                r2 += (transR[0][i] - transR[0][j]) * (transR[0][i] - transR[0][j]); 
-                r2 += (transR[1][i] - transR[1][j]) * (transR[1][i] - transR[1][j]); 
-                r2 += (transR[2][i] - transR[2][j]) * (transR[2][i] - transR[2][j]);
+                rx = (transR[0][i] - transR[0][j]); 
+                ry = (transR[1][i] - transR[1][j]); 
+                rz = (transR[2][i] - transR[2][j]);
+
+                tot = rx*rx + ry*ry + rz*rz;
 
                 //rnorm=sqrt(r2); 
                 //quot=sigma/sqrt(r2);
                 //term2 = quot*quot*quot*quot*quot*quot;
-                quot=sigma/(r2);
+                quot=sigma/(tot);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;  
                 
@@ -532,7 +543,7 @@ void computeAccelerations() {
     int i, j;
     double f, rSqd, force;
     double r0, r1, r2;
-    double invRSqd, invRSqd3, invRSqd4;
+    double invRSqd, invRSqd4, invRSqd7;
     double rij[3]; // position of i relative to j
     
     double transR[3][MaxN];
@@ -557,17 +568,14 @@ void computeAccelerations() {
                 rij[1] = r1 - transR[1][j];
                 rij[2] = r2 - transR[2][j];
                 //  sum of squares of the components
-                rSqd += rij[0] * rij[0];
-                rSqd += rij[1] * rij[1];
-                rSqd += rij[2] * rij[2];
-
+                rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
             
             //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
                 invRSqd = 1.0 / rSqd;
-                invRSqd3 = invRSqd*invRSqd*invRSqd;
                 invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
+                invRSqd7 = invRSqd*invRSqd*invRSqd * invRSqd4;
 
-                f = 24 * (2 * (invRSqd4 * invRSqd3) - invRSqd4);
+                f = 24 * (2 * invRSqd7 - invRSqd4);
                 
 
                 //  from F = ma, where m = 1 in natural units!
