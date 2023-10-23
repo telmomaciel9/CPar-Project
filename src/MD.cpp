@@ -480,10 +480,6 @@ double Potential() {
     Pot=0.;
     for (i=0; i<N; i++) {
 
-        //r0 = transR[0][i] ;
-        //r1 = transR[1][i] ;
-        //r2 = transR[2][i] ;
-
         for (j=0; j<i; j++) {
             
                 r2=0.;
@@ -494,14 +490,10 @@ double Potential() {
 
                 tot = rx*rx + ry*ry + rz*rz;
 
-                //rnorm=sqrt(r2); 
-                //quot=sigma/sqrt(r2);
-                //term2 = quot*quot*quot*quot*quot*quot;
                 quot=sigma/(tot);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;
                 
-                //Pot += 4*epsilon*(term1 - term2);
                 Pot += 4.*(term1 - term2);
                 
 
@@ -517,14 +509,10 @@ double Potential() {
 
                 tot = rx*rx + ry*ry + rz*rz;
 
-                //rnorm=sqrt(r2); 
-                //quot=sigma/sqrt(r2);
-                //term2 = quot*quot*quot*quot*quot*quot;
                 quot=sigma/(tot);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;  
                 
-                //Pot += 4*epsilon*(term1 - term2);
                 Pot += 4.*(term1 - term2);
                 
 
