@@ -468,7 +468,7 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
 
 // Function to calculate the potential energy of the system
 double Potential() {
-    double quot, rnorm, term1, term2, Pot;
+    double quot, rnorm, term1, term2, Pot,r2;
     int i, j, k;
 
     double transR[3][MaxN];
