@@ -469,9 +469,7 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
 // Function to calculate the potential energy of the system
 double Potential() {
     double quot, rnorm, term1, term2, Pot;
-    int i, j;
-    double r0, r1, r2;
-    double rx, ry, rz, tot;
+    int i, j, k;
 
     double transR[3][MaxN];
 
@@ -484,13 +482,11 @@ double Potential() {
             
                 r2=0.;
 
-                rx = (transR[0][i] - transR[0][j]); 
-                ry = (transR[1][i] - transR[1][j]); 
-                rz = (transR[2][i] - transR[2][j]);
+                for (k=0; k<3; k++) {
+                    r2 += (transR[k][i]-transR[k][j])*(transR[k][i]-transR[k][j]);
+                }
 
-                tot = rx*rx + ry*ry + rz*rz;
-
-                quot=sigma/(tot);
+                quot=sigma/(r2);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;
                 
@@ -503,13 +499,11 @@ double Potential() {
         
                 r2=0.;
 
-                rx = (transR[0][i] - transR[0][j]); 
-                ry = (transR[1][i] - transR[1][j]); 
-                rz = (transR[2][i] - transR[2][j]);
+                for (k=0; k<3; k++) {
+                    r2 += (transR[k][i]-transR[k][j])*(transR[k][i]-transR[k][j]);
+                }
 
-                tot = rx*rx + ry*ry + rz*rz;
-
-                quot=sigma/(tot);
+                quot=sigma/(r2);
                 term2 = quot*quot*quot;
                 term1 = term2 * term2;  
                 
@@ -528,9 +522,8 @@ double Potential() {
 //   the forces on each atom.  Then uses a = F/m to calculate the
 //   accelleration of each atom. 
 void computeAccelerations() {
-    int i, j;
+    int i, j, k;
     double f, rSqd, force;
-    double r0, r1, r2;
     double invRSqd, invRSqd4, invRSqd7;
     double rij[3]; // position of i relative to j
     
@@ -538,26 +531,23 @@ void computeAccelerations() {
     transposeMatrix(r, transR);
     
     for (i = 0; i < N; i++) {  // set all accelerations to zero
-        a[i][0] = 0;
-        a[i][1] = 0;
-        a[i][2] = 0;
+        for (k = 0; k < 3; k++) {
+            a[i][k] = 0;
+        }
     }
     for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
-        r0 = transR[0][i];
-        r1 = transR[1][i];
-        r2 = transR[2][i];
 
         for (j = i+1; j < N; j++) {
             // initialize r^2 to zero
                 rSqd = 0;
-            
-                //  component-by-componenent position of i relative to j
-                rij[0] = r0 - transR[0][j];
-                rij[1] = r1 - transR[1][j];
-                rij[2] = r2 - transR[2][j];
-                //  sum of squares of the components
-                rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
-            
+
+                for (k = 0; k < 3; k++) {
+                    //  component-by-componenent position of i relative to j
+                    rij[k] = transR[k][i] - transR[k][j];
+                    //  sum of squares of the components
+                    rSqd += rij[k] * rij[k];
+                }
+
             //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
                 invRSqd = 1.0 / rSqd;
                 invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
@@ -565,19 +555,11 @@ void computeAccelerations() {
 
                 f = 24 * (2 * invRSqd7 - invRSqd4);
                 
-
-                //  from F = ma, where m = 1 in natural units!
-                force = rij[0] * f;
-                a[i][0] += force;
-                a[j][0] -= force;
-
-                force = rij[1] * f;
-                a[i][1] += force;
-                a[j][1] -= force;
-
-                force = rij[2] * f;
-                a[i][2] += force;
-                a[j][2] -= force;
+                for (k = 0; k < 3; k++) {
+                    //  from F = ma, where m = 1 in natural units!
+                    a[i][k] += rij[k] * f;
+                    a[j][k] -= rij[k] * f;
+                }
    
         }
     }
