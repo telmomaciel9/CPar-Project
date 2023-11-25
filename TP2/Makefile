@@ -1,6 +1,6 @@
 CC = gcc
 SRC = src/
-CFLAGS = # select optimization flags (e.g., O2 or O3)
+CFLAGS = -O3 -pg -Ofast -march=native -g -fno-omit-frame-pointer -ftree-vectorize -mavx
 
 .DEFAULT_GOAL = all
 
