@@ -272,7 +272,7 @@ int main()
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
     //computeAccelerations();
-    double xxx = PotentialCompute();
+    PotentialCompute();
     
     // Print number of particles to the trajectory file
     fprintf(tfp,"%i\n",N);
@@ -475,72 +475,57 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
     }
 }
 
-double calculatePot(int i, int j, double transR[3][MaxN]){
-        double r2_sum = 0.0;
-        for (int k = 0; k < 3; k++) {
-                double diff = transR[k][i] - transR[k][j];
-                r2_sum += diff * diff;
-            }
+double calculatePot(double r2){
+    double quot=sigma/r2;
+    double term2 = quot*quot*quot;
+    double term1 = term2 * term2;  
 
-        double quot=sigma/(r2_sum);
-        double term2 = quot*quot*quot;
-        double term1 = term2 * term2;  
+    return 8.0 *(term1 - term2);
+}
 
-        return 8.0 *(term1 - term2);
-} 
+double calculateF(double rSqd){
+    double invRSqd = 1.0 / rSqd;
+    double invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
+    double invRSqd7 = invRSqd*invRSqd*invRSqd*invRSqd*invRSqd*invRSqd*invRSqd;
+
+    return 24 * (2 * invRSqd7 - invRSqd4);
+}
 
 double PotentialCompute(){
-    int i, j, k;
-    double f, rSqd, force;
-    double invRSqd, invRSqd4, invRSqd7;
-    double rij[3]; // position of i relative to j
-    double quot, rnorm, term1, term2, Pot, r2;
-    Pot=0.;
-    
-    double transR[3][MaxN];
+    double Pot=0.0;
+    double transR[3][MaxN]; 
     transposeMatrix(r, transR);  
     
-    for (i = 0; i < N; i++) {  // set all accelerations to zero
-        for (k = 0; k < 3; k++) {
-            a[i][k] = 0;
-        }
+    for (int i = 0; i < N; i++) { 
+        a[i][0] = 0;
+        a[i][1] = 0;
+        a[i][2] = 0;
 
-        for (j=0; j<i; j++) {
-            Pot += calculatePot(i, j, transR);      
-        }
+        for (int j = i - 1; j >= 0; j--) {
+            double rij[3];
 
-    }
-    for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
+            for (int k = 0; k < 3; k++) {
+                rij[k] = transR[k][i] - transR[k][j];
+            } 
 
-        for (j = i+1; j < N; j++) {
-            // initialize r^2 to zero
-                rSqd = 0;
+            double rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
 
-                for (k = 0; k < 3; k++) {
-                    //  component-by-componenent position of i relative to j
-                    rij[k] = transR[k][i] - transR[k][j];
-                    //  sum of squares of the components
-                    rSqd += rij[k] * rij[k];
-                }
-
-            //  From derivative of Lennard-Jones with sigma and epsilon set equal to 1 in natural units!
-                invRSqd = 1.0 / rSqd;
-                invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
-                invRSqd7 = invRSqd*invRSqd*invRSqd * invRSqd4;
-
-                f = 24 * (2 * invRSqd7 - invRSqd4);
+            Pot += calculatePot(rSqd);
+            double f = calculateF(rSqd);
                 
-                for (k = 0; k < 3; k++) {
-                    //  from F = ma, where m = 1 in natural units!
-                    a[i][k] += rij[k] * f;
-                    a[j][k] -= rij[k] * f;
-                }
-   
+            for (int k = 0; k < 3; k++) {
+                double force = rij[k] * f;
+                a[i][k] += force;
+                a[j][k] -= force;
+            }     
         }
     }
-
     return Pot;
 }
+
+
+
+
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 //double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
