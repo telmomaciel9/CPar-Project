@@ -68,16 +68,18 @@ void initialize();
 //  update positions and velocities using Velocity Verlet algorithm 
 //  print particle coordinates to file for rendering via VMD or other animation software
 //  return 'instantaneous pressure'
-double VelocityVerlet(double dt, int iter, FILE *fp);  
+//double VelocityVerlet(double dt, int iter, FILE *fp, double* result);  
+void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]);
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
-void computeAccelerations();
+//void computeAccelerations();
 //  Numerical Recipes function for generation gaussian distribution
 double gaussdist();
 //  Initialize velocities according to user-supplied initial Temperature (Tinit)
 void initializeVelocities();
 //  Compute total potential energy from particle coordinates
-double Potential();
+//double Potential();
+double PotentialCompute();
 //  Compute mean squared velocity from particle velocities
 double MeanSquaredVelocity();
 //  Compute total kinetic energy from particle mass and velocities
@@ -213,7 +215,7 @@ int main()
     
     scanf("%lf",&rho);
     
-    N = 5000;
+    N = 10*216;
     Vol = N/(rho*NA);
     
     Vol /= VolFac;
@@ -269,8 +271,8 @@ int main()
     //  Based on their positions, calculate the ininial intermolecular forces
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
-    computeAccelerations();
-    
+    //computeAccelerations();
+    double xxx = PotentialCompute();
     
     // Print number of particles to the trajectory file
     fprintf(tfp,"%i\n",N);
@@ -303,7 +305,11 @@ int main()
         // This updates the positions and velocities using Newton's Laws
         // Also computes the Pressure as the sum of momentum changes from wall collisions / timestep
         // which is a Kinetic Theory of gasses concept of Pressure
-        Press = VelocityVerlet(dt, i+1, tfp);
+        double result[2];
+        VelocityVerlet(dt, i+1, tfp, result);
+        // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        Press = result[0];
+        //Press = VelocityVerlet(dt, i+1, tfp, result);
         Press *= PressFac;
         
         //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -313,7 +319,10 @@ int main()
         //  We would also like to use the IGL to try to see if we can extract the gas constant
         mvs = MeanSquaredVelocity();
         KE = Kinetic();
-        PE = Potential();
+        
+        // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+        PE = result[1];
+        //PE = Potential();
         
         // Temperature from Kinetic Theory
         Temp = m*mvs/(3*kB) * TempFac;
@@ -466,74 +475,40 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
     }
 }
 
-// Function to calculate the potential energy of the system
-double Potential() {
-    double quot, rnorm, term1, term2, Pot,r2;
-    int i, j, k;
+double calculatePot(int i, int j, double transR[3][MaxN]){
+        double r2_sum = 0.0;
+        for (int k = 0; k < 3; k++) {
+                double diff = transR[k][i] - transR[k][j];
+                r2_sum += diff * diff;
+            }
 
-    double transR[3][MaxN];
+        double quot=sigma/(r2_sum);
+        double term2 = quot*quot*quot;
+        double term1 = term2 * term2;  
 
-    transposeMatrix(r, transR);
+        return 8.0 *(term1 - term2);
+} 
 
-    Pot=0.;
-    for (i=0; i<N; i++) {
-
-        for (j=0; j<i; j++) {
-            
-                r2=0.;
-
-                for (k=0; k<3; k++) {
-                    r2 += (transR[k][i]-transR[k][j])*(transR[k][i]-transR[k][j]);
-                }
-
-                quot=sigma/(r2);
-                term2 = quot*quot*quot;
-                term1 = term2 * term2;
-                
-                Pot += 4.*(term1 - term2);
-                
-
-        }
-
-        for (j=i+1; j<N; j++) {
-        
-                r2=0.;
-
-                for (k=0; k<3; k++) {
-                    r2 += (transR[k][i]-transR[k][j])*(transR[k][i]-transR[k][j]);
-                }
-
-                quot=sigma/(r2);
-                term2 = quot*quot*quot;
-                term1 = term2 * term2;  
-                
-                Pot += 4.*(term1 - term2);
-                
-
-        }
-    }
-    
-    return Pot;
-}
-
-
-
-//   Uses the derivative of the Lennard-Jones potential to calculate
-//   the forces on each atom.  Then uses a = F/m to calculate the
-//   accelleration of each atom. 
-void computeAccelerations() {
+double PotentialCompute(){
     int i, j, k;
     double f, rSqd, force;
     double invRSqd, invRSqd4, invRSqd7;
     double rij[3]; // position of i relative to j
+    double quot, rnorm, term1, term2, Pot, r2;
+    Pot=0.;
     
     double transR[3][MaxN];
-    transposeMatrix(r, transR);
+    transposeMatrix(r, transR);  
     
     for (i = 0; i < N; i++) {  // set all accelerations to zero
         for (k = 0; k < 3; k++) {
             a[i][k] = 0;
         }
+
+        for (j=0; j<i; j++) {
+            Pot += calculatePot(i, j, transR);      
+        }
+
     }
     for (i = 0; i < N-1; i++) {   // loop over all distinct pairs i,j
 
@@ -563,10 +538,13 @@ void computeAccelerations() {
    
         }
     }
+
+    return Pot;
 }
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
-double VelocityVerlet(double dt, int iter, FILE *fp) {
+//double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
+void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
     int i, j, k;
     
     double psum = 0.;
@@ -585,7 +563,8 @@ double VelocityVerlet(double dt, int iter, FILE *fp) {
         //printf("  %i  %6.4e   %6.4e   %6.4e\n",i,r[i][0],r[i][1],r[i][2]);
     }
     //  Update accellerations from updated positions
-    computeAccelerations();
+    //computeAccelerations();
+    result[1] = PotentialCompute();
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
@@ -618,7 +597,10 @@ double VelocityVerlet(double dt, int iter, FILE *fp) {
     }*/
     //fprintf(fp,"\n \n");
     
-    return psum/(6*L*L);
+
+    result[0] = psum/(6*L*L);
+
+    //return result[2];
 }
 
 
