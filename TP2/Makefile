@@ -16,6 +16,7 @@ MDpar.exe: $(SRC)/MDpar.cpp
 
 clean:
 	rm ./MD*.exe
+	rm cp_*
 
 runseq: MDseq.exe
 	./MDseq.exe < inputdata.txt
