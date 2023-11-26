@@ -215,7 +215,8 @@ int main()
     
     scanf("%lf",&rho);
     
-    N = 10*216;
+    //N = 10*216;
+    N = 5000;
     Vol = N/(rho*NA);
     
     Vol /= VolFac;
@@ -493,8 +494,8 @@ double calculateF(double rSqd){
 
 double PotentialCompute(){
     double Pot=0.0;
-    double transR[3][MaxN]; 
-    transposeMatrix(r, transR);  
+    //double transR[3][MaxN]; 
+    //transposeMatrix(r, transR);  
     
     for (int i = 0; i < N; i++) { 
         a[i][0] = 0;
@@ -505,7 +506,8 @@ double PotentialCompute(){
             double rij[3];
 
             for (int k = 0; k < 3; k++) {
-                rij[k] = transR[k][i] - transR[k][j];
+                //rij[k] = transR[k][i] - transR[k][j];
+                rij[k] = r[i][k] - r[j][k];
             } 
 
             double rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
