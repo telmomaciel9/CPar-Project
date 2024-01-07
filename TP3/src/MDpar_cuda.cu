@@ -476,6 +476,7 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
     }
 }
 
+__device__
 double calculatePot(double r2){
     double quot=sigma/r2;
     double term2 = quot*quot*quot;
@@ -484,6 +485,7 @@ double calculatePot(double r2){
     return 8.0 *(term1 - term2);
 }
 
+__device__
 double calculateF(double rSqd){
     double invRSqd = 1.0 / rSqd;
     double invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
@@ -492,24 +494,21 @@ double calculateF(double rSqd){
     return 24 * (2 * invRSqd7 - invRSqd4);
 }
 
-double PotentialCompute(){
+__global__
+double PotentialComputeKernel(){
     double Pot=0.0;
-    //double transR[3][MaxN]; 
-    //transposeMatrix(r, transR);  
     
-    for (int i = 0; i < N; i++) { 
-        a[i][0] = 0;
-        a[i][1] = 0;
+    for(int i = 0; i < N; i++){
+    	a[i][0] = 0;
+	a[i][1] = 0;
         a[i][2] = 0;
     }
 
-    #pragma omp parallel for reduction(+:a[:N][:3]) reduction(+:Pot)
     for (int i = 0; i < N; i++) { 
         for (int j = i - 1; j >= 0; j--) {
             double rij[3];
 
             for (int k = 0; k < 3; k++) {
-                //rij[k] = transR[k][i] - transR[k][j];
                 rij[k] = r[i][k] - r[j][k];
             } 
 
@@ -682,4 +681,35 @@ double gaussdist() {
         
     }
 }
+void launchPotencialComputeKernel (double *r, double *a, double &Pot) {
+	// pointers to the device memory
+	double *r_gpu, *a_gpu, *Pot_gpu;
+	// declare variable with size of the array in bytes
+	int bytes = SIZE * sizeof(float);
 
+	// allocate the memory on the device
+	cudaMalloc ((void**) &r_gpu, bytes);
+	cudaMalloc ((void**) &a_gpu, bytes);
+	cudaMalloc ((void**) &Pot_gpu, sizeof(double));
+	checkCUDAError("mem allocation");
+
+	// copy inputs to the device
+	cudaMemcpy (r_gpu, r, bytes, cudaMemcpyHostToDevice);
+	checkCUDAError("memcpy h->d");
+
+	// launch the kernel
+	startKernelTime ();
+	potencialComputeKernel <<< NUM_BLOCK, NUM_THREADS_PER_BLOCK >>> (r_gpu, a_gpu, Pot_gpu);
+	stopKernelTime ();
+	checkCUDAError("kernel invocation");
+
+	// copy the output to the host
+	cudaMemcpy (&Pot, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
+	checkCUDAError("memcpy d->h");
+
+	// free the device memory
+	cudaFree(r_gpu);
+	cudaFree(a_gpu);
+	cudaFree(Pot_gpu);
+	checkCUDAError("mem free");
+}
