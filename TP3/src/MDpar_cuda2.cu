@@ -97,8 +97,8 @@ int main()
     double dt, Vol, Temp, Press, Pavg, Tavg, rho;
     double VolFac, TempFac, PressFac, timefac;
     double KE, PE, mvs, gc, Z;
-    char trash[10000], prefix[1000], tfn[1000], ofn[1000], afn[1000];
-    FILE *infp, *tfp, *ofp, *afp;
+    char prefix[1000], tfn[1000], ofn[1000], afn[1000];
+    FILE *tfp, *ofp, *afp;
     
     
     printf("\n  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
