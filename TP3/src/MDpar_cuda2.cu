@@ -27,7 +27,7 @@
 #include<stdlib.h>
 #include<math.h>
 #include<string.h>
-#include<MDpar_cuda.h>
+#include "MDpar_cuda.h"
 
 // Number of particles
 int N;
