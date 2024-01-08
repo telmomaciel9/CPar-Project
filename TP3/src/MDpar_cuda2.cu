@@ -540,7 +540,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
                 //a[j][k] -= force;
                 a[k] += force;
 
-                atomicAdd(&a1[i * 3 + k], -force);
+                addAtomic(&a1[j * 3 + k], -force);
             } 
 
             
@@ -548,11 +548,11 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
         }
 
         for (int k = 0; k < 3; k++) {
-            atomicAdd(&a1[j * 3 + k], -a[k]);
+            addAtomic(&a1[i * 3 + k], -a[k]);
         } 
     }
 
-    atomicAdd(Pot1_gpu, Pot);
+    addAtomic(Pot1_gpu, Pot);
     //adicionar atomicamente o pot
 }
 
@@ -652,7 +652,7 @@ void PotentialCompute(){
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 //double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
-void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
+double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
     int i, j;
     
     double psum = 0.;
@@ -684,32 +684,16 @@ void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
     // Elastic walls
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            if (r[i][j]<0.) {
+            if (r[i][j]<0. || r[i][j]>=L) {
                 v[i][j] *=-1.; //- elastic walls
                 psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "left" walls
-            }
-            if (r[i][j]>=L) {
-                v[i][j]*=-1.;  //- elastic walls
-                psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "right" walls
             }
         }
     }
     
-    
-    /* removed, uncomment to save atoms positions */
-    /*for (i=0; i<N; i++) {
-        fprintf(fp,"%s",atype);
-        for (j=0; j<3; j++) {
-            fprintf(fp,"  %12.10e ",r[i][j]);
-        }
-        fprintf(fp,"\n");
-    }*/
-    //fprintf(fp,"\n \n");
-    
 
-    result[0] = psum/(6*L*L);
+    return psum/(6*L*L);
 
-    //return result[2];
 }
 
 
