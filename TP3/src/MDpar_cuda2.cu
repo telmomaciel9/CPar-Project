@@ -494,7 +494,7 @@ void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
 
 __device__
 double calculatePot(double r2){
-    double quot=sigma/r2;
+    double quot=1/r2; //sigma ou 1?
     double term2 = quot*quot*quot;
     double term1 = term2 * term2;  
 
@@ -515,7 +515,7 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *r1_gpu,double *a1_gpu, double *Pot1_gpu, int N){
+void PotentialComputeKernel(double *r1_c,double *a1_c, double *Pot1_gpu, int N){
     double Pot=0.0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -591,7 +591,7 @@ void launchPotencialComputeKernel (double **PE) {
 
 	// launch the kernel
 	startKernelTime ();
-	potencialComputeKernel <<< 100, 60 >>> (r_gpu, a_gpu, Pot_gpu, N);
+	PotentialComputeKernel <<< 100, 60 >>> (r_gpu, a_gpu, Pot_gpu, N);
 	stopKernelTime ();
 	checkCUDAError("kernel invocation");
 
@@ -614,7 +614,6 @@ void launchPotencialComputeKernel (double **PE) {
 }
 
 void PotentialCompute(){
-    double Pot=0.0;
     
     for(int i = 0; i < N; i++){
     	//a[i][0] = 0;
