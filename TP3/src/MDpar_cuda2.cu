@@ -72,7 +72,8 @@ void initialize();
 //  print particle coordinates to file for rendering via VMD or other animation software
 //  return 'instantaneous pressure'
 //double VelocityVerlet(double dt, int iter, FILE *fp, double* result);  
-void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]);
+//void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]);
+double VelocityVerlet(double dt, int iter, FILE *fp, double* PE);  
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
 //void computeAccelerations();
@@ -309,12 +310,15 @@ int main()
         // This updates the positions and velocities using Newton's Laws
         // Also computes the Pressure as the sum of momentum changes from wall collisions / timestep
         // which is a Kinetic Theory of gasses concept of Pressure
-        double result[2];
-        VelocityVerlet(dt, i+1, tfp, result);
+        //double result[2];
+        //VelocityVerlet(dt, i+1, tfp, result);
         // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        Press = result[0];
+        //Press = result[0];
         //Press = VelocityVerlet(dt, i+1, tfp, result);
-        Press *= PressFac;
+
+        double var;
+        var = VelocityVerlet(dt, i+1, tfp, &PE);
+        Press *= PressFac*var;
         
         //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //  Now we would like to calculate somethings about the system:
@@ -325,7 +329,7 @@ int main()
         KE = Kinetic();
         
         // XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-        PE = result[1]; //Pot 
+        //PE = result[1]; //Pot 
         //PE = Potential();
         
         // Temperature from Kinetic Theory
@@ -511,7 +515,7 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *r_gpu,double *a_gpu, double *Pot_gpu, int N){
+void PotentialComputeKernel(double *r1_gpu,double *a1_gpu, double *Pot1_gpu, int N){
     double Pot=0.0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -530,7 +534,7 @@ void PotentialComputeKernel(double *r_gpu,double *a_gpu, double *Pot_gpu, int N)
 
             for (int k = 0; k < 3; k++) {
                 //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r_c[i * 3 + k] - r_c[j * 3 + k];
+                rij[k] = r1_c[i * 3 + k] - r1_c[j * 3 + k];
             } 
 
             rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
@@ -545,7 +549,7 @@ void PotentialComputeKernel(double *r_gpu,double *a_gpu, double *Pot_gpu, int N)
                 a[k] += force;
 
                 //a_c[i * 3 + k] += force;
-                addAtomic(&a_c[i * 3 + k], -force);
+                addAtomic(&a1_c[i * 3 + k], -force);
             } 
 
             
@@ -554,11 +558,11 @@ void PotentialComputeKernel(double *r_gpu,double *a_gpu, double *Pot_gpu, int N)
 
         for (int k = 0; k < 3; k++) {
             //a_c[i * 3 + k] += force;
-            addAtomic(&a_c[i * 3 + k], -a[k]);
+            addAtomic(&a1_c[i * 3 + k], -a[k]);
         } 
     }
 
-    addAtomic(Pot_gpu, Pot);
+    addAtomic(Pot1_gpu, Pot);
     //adicionar atomicamente o pot
 }
 
@@ -587,7 +591,7 @@ void launchPotencialComputeKernel (double **PE) {
 
 	// launch the kernel
 	startKernelTime ();
-	potencialComputeKernel <<< NUM_BLOCK, NUM_THREADS_PER_BLOCK >>> (r_gpu, a_gpu, Pot_gpu, N);
+	potencialComputeKernel <<< 100, 60 >>> (r_gpu, a_gpu, Pot_gpu, N);
 	stopKernelTime ();
 	checkCUDAError("kernel invocation");
 
@@ -609,7 +613,7 @@ void launchPotencialComputeKernel (double **PE) {
     **PE = **PE * 2;
 }
 
-double PotentialCompute(){
+void PotentialCompute(){
     double Pot=0.0;
     
     for(int i = 0; i < N; i++){
