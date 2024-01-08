@@ -51,13 +51,10 @@ double Tinit;  //2;
 const int MAXPART=5001;
 //  Position
 double r[MAXPART][3];
-double r_c[MAXPART * 3];
 //  Velocity
 double v[MAXPART][3];
-double v_c[MAXPART * 3];
 //  Acceleration
 double a[MAXPART][3];
-double a_c[MAXPART * 3];
 //  Force
 double F[MAXPART][3];
 
@@ -404,9 +401,9 @@ void initialize() {
                     //r[p][1] = (j + 0.5)*pos;
                     //r[p][2] = (k + 0.5)*pos;
 
-                    r_c[p * 3] = (i + 0.5) * pos;
-                    r_c[p * 3 + 1] = (j + 0.5) * pos;
-                    r_c[p * 3 + 2] = (k + 0.5) * pos;
+                    r[p][0] = (i + 0.5)*pos;
+                    r[p][1] = (j + 0.5)*pos;
+                    r[p][2] = (k + 0.5)*pos;
                 }
                 p++;
             }
@@ -444,13 +441,9 @@ double MeanSquaredVelocity() {
     
     for (int i=0; i<N; i++) {
         
-        //vx2 = vx2 + v[i][0]*v[i][0];
-        //vy2 = vy2 + v[i][1]*v[i][1];
-        //vz2 = vz2 + v[i][2]*v[i][2];
-
-        vx2 += v_c[i * 3] * v_c[i * 3];
-        vy2 += v_c[i * 3 + 1] * v_c[i * 3 + 1];
-        vz2 += v_c[i * 3 + 2] * v_c[i * 3 + 2];
+        vx2 = vx2 + v[i][0]*v[i][0];
+        vy2 = vy2 + v[i][1]*v[i][1];
+        vz2 = vz2 + v[i][2]*v[i][2];
         
     }
     v2 = (vx2+vy2+vz2)/N;
@@ -471,8 +464,7 @@ double Kinetic() { //Write Function here!
         v2 = 0.;
         for (int j=0; j<3; j++) {
             
-            //v2 += v[i][j]*v[i][j];
-            v2 += v_c[i * 3 + j] * v_c[i * 3 + j];
+            v2 += v[i][j]*v[i][j];
             
         }
         kin += m*v2/2.;
@@ -515,7 +507,7 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *r1_c,double *a1_c, double *Pot1_gpu, int N){
+void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
     double Pot=0.0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -534,7 +526,7 @@ void PotentialComputeKernel(double *r1_c,double *a1_c, double *Pot1_gpu, int N){
 
             for (int k = 0; k < 3; k++) {
                 //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r1_c[i * 3 + k] - r1_c[j * 3 + k];
+                rij[k] = r1[i * 3 + k] - r1[j * 3 + k];
             } 
 
             rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
@@ -548,8 +540,7 @@ void PotentialComputeKernel(double *r1_c,double *a1_c, double *Pot1_gpu, int N){
                 //a[j][k] -= force;
                 a[k] += force;
 
-                //a_c[i * 3 + k] += force;
-                addAtomic(&a1_c[i * 3 + k], -force);
+                atomicAdd(&a1[i * 3 + k], -force);
             } 
 
             
@@ -557,12 +548,11 @@ void PotentialComputeKernel(double *r1_c,double *a1_c, double *Pot1_gpu, int N){
         }
 
         for (int k = 0; k < 3; k++) {
-            //a_c[i * 3 + k] += force;
-            addAtomic(&a1_c[i * 3 + k], -a[k]);
+            atomicAdd(&a1[j * 3 + k], -a[k]);
         } 
     }
 
-    addAtomic(Pot1_gpu, Pot);
+    atomicAdd(Pot1_gpu, Pot);
     //adicionar atomicamente o pot
 }
 
@@ -572,7 +562,8 @@ void launchPotencialComputeKernel (double **PE) {
 	double *r_gpu, *a_gpu, *Pot_gpu;
     double *x,*y;
 	// declare variable with size of the array in bytes
-	int bytes = SIZE * sizeof(float);
+	//int bytes = SIZE * sizeof(float);
+    int bytes = N * 3 * sizeof(float);
     x = (double*)malloc(bytes);
     y = (double*)malloc(bytes);
 
@@ -585,7 +576,7 @@ void launchPotencialComputeKernel (double **PE) {
 
 	// copy inputs to the device
     cudaMemset (a_gpu, 0, bytes);
-	cudaMemcpy (r_gpu, r_c, bytes, cudaMemcpyHostToDevice);
+	cudaMemcpy (r_gpu, r, bytes, cudaMemcpyHostToDevice);
     cudaMemset (Pot_gpu, 0, sizeof(double));
 	checkCUDAError("memcpy h->d");
 
@@ -602,8 +593,8 @@ void launchPotencialComputeKernel (double **PE) {
 	cudaMemcpy (*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
 	checkCUDAError("memcpy d->h");
 
-    memcpy(a_c, x, 5000 * 3 * sizeof(double));
-    memcpy(r_c, y, 5000 * 3 * sizeof(double));
+    memcpy(a, x, 5000 * sizeof(double));
+    memcpy(r, y, 5000 * sizeof(double));
 
 	// free the device memory
 	cudaFree(r_gpu);
@@ -629,12 +620,9 @@ double calculateF2(double rSqd){
 void PotentialCompute(){
     
     for(int i = 0; i < N; i++){
-    	//a[i][0] = 0;
-	    //a[i][1] = 0;
-        //a[i][2] = 0;
-        a_c[i * 3] = 0;
-        a_c[i * 3 + 1] = 0;  
-        a_c[i * 3 + 2] = 0;
+        a[i][0] = 0;
+	    a[i][1] = 0;
+        a[i][2] = 0;
     }
 
     for (int i = 0; i < N; i++) { 
@@ -642,8 +630,7 @@ void PotentialCompute(){
             double rij[3];
 
             for (int k = 0; k < 3; k++) {
-                //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r_c[i * 3 + k] - r_c[j * 3 + k];
+                rij[k] = r[i][k] - r[j][k];
             } 
 
             double rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
@@ -652,10 +639,8 @@ void PotentialCompute(){
                 
             for (int k = 0; k < 3; k++) {
                 double force = rij[k] * f;
-                //a[i][k] += force;
-                //a[j][k] -= force;
-                a_c[i * 3 + k] += force;
-                a_c[j * 3 + k] -= force;
+                a[i][k] += force;
+                a[j][k] -= force;
             }     
         }
     }
@@ -667,50 +652,66 @@ void PotentialCompute(){
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 //double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
-double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
+void VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
     int i, j;
     
     double psum = 0.;
     
+    //  Compute accelerations from forces at current position
+    // this call was removed (commented) for predagogical reasons
+    //computeAccelerations();
     //  Update positions and velocity with current velocity and acceleration
     //printf("  Updated Positions!\n");
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            int idx = i * 3 + j;
-            //r[i][j] += v[i][j]*dt + 0.5*a[i][j]*dt*dt;
-            //v[i][j] += 0.5*a[i][j]*dt;
-            r_c[idx] += v_c[idx] * dt + 0.5 * a_c[idx] * dt * dt;
-            v_c[idx] += 0.5 * a_c[idx] * dt;
+            r[i][j] += v[i][j]*dt + 0.5*a[i][j]*dt*dt;
+            
+            v[i][j] += 0.5*a[i][j]*dt;
         }
         //printf("  %i  %6.4e   %6.4e   %6.4e\n",i,r[i][0],r[i][1],r[i][2]);
     }
     //  Update accellerations from updated positions
     //computeAccelerations();
-    launchPotencialComputeKernel(&Pot);
     //result[1] = PotentialCompute();
+    launchPotencialComputeKernel(&Pot);
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            //v[i][j] += 0.5*a[i][j]*dt;
-            v_c[i * 3 + j] += 0.5 * a_c[i * 3 + j] * dt;
+            v[i][j] += 0.5*a[i][j]*dt;
         }
     }
     
     // Elastic walls
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            if (r_c[i * 3 + j] < 0.0 || r_c[i * 3 + j] >= L) {
-                //v[i][j] *=-1.; //- elastic walls
-                v_c[i * 3 + j] *=-1.; //- elastic walls
-                //psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "left" walls
-                psum += 2*m*fabs(v_c[i * 3 + j])/dt;  // contribution to pressure from "left" walls
+            if (r[i][j]<0.) {
+                v[i][j] *=-1.; //- elastic walls
+                psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "left" walls
+            }
+            if (r[i][j]>=L) {
+                v[i][j]*=-1.;  //- elastic walls
+                psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "right" walls
             }
         }
     }
     
-    return psum/(6*L*L);
+    
+    /* removed, uncomment to save atoms positions */
+    /*for (i=0; i<N; i++) {
+        fprintf(fp,"%s",atype);
+        for (j=0; j<3; j++) {
+            fprintf(fp,"  %12.10e ",r[i][j]);
+        }
+        fprintf(fp,"\n");
+    }*/
+    //fprintf(fp,"\n \n");
+    
 
+    result[0] = psum/(6*L*L);
+
+    //return result[2];
 }
+
 
 
 void initializeVelocities() {
@@ -718,12 +719,9 @@ void initializeVelocities() {
     int i, j;
     
     for (i=0; i<N; i++) {
-        
         for (j=0; j<3; j++) {
             //  Pull a number from a Gaussian Distribution
-            //v[i][j] = gaussdist();
-            v_c[i * 3 + j] = gaussdist();
-            
+            v[i][j] = gaussdist();
         }
     }
     
@@ -733,10 +731,7 @@ void initializeVelocities() {
     
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            
-            //vCM[j] += m*v[i][j];
-            vCM[j] += m*v_c[i * 3 + j];
-            
+            vCM[j] += m*v[i][j];
         }
     }
     
@@ -749,9 +744,7 @@ void initializeVelocities() {
     //  not drift in space!
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            
-            //v[i][j] -= vCM[j];
-            v_c[i * 3 + j] -= vCM[j];
+            v[i][j] -= vCM[j];
         }
     }
     
@@ -761,9 +754,7 @@ void initializeVelocities() {
     vSqdSum=0.;
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            
-            //vSqdSum += v[i][j]*v[i][j];
-            vSqdSum += v_c[i * 3 + j] * v_c[i * 3 + j];
+            vSqdSum += v[i][j]*v[i][j];
         }
     }
     
@@ -772,8 +763,8 @@ void initializeVelocities() {
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
             
-            //v[i][j] *= lambda;
-            v_c[i * 3 + j] *= lambda;
+            v[i][j] *= lambda;
+            
         }
     }
 }
