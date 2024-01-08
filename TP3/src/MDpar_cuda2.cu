@@ -83,7 +83,7 @@ double gaussdist();
 void initializeVelocities();
 //  Compute total potential energy from particle coordinates
 //double Potential();
-double PotentialCompute();
+void PotentialCompute();
 //  Compute mean squared velocity from particle velocities
 double MeanSquaredVelocity();
 //  Compute total kinetic energy from particle mass and velocities
@@ -654,7 +654,7 @@ void PotentialCompute(){
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 //double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
-void VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
+double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     int i, j;
     
     double psum = 0.;
