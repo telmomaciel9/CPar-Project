@@ -616,16 +616,9 @@ void launchPotencialComputeKernel (double **PE) {
 
 
 
-double calculatePot(double r2){
-    double quot=1/r2; //sigma ou 1?
-    double term2 = quot*quot*quot;
-    double term1 = term2 * term2;  
-
-    return 8.0 *(term1 - term2);
-}
 
 
-double calculateF(double rSqd){
+double calculateF2(double rSqd){
     double invRSqd = 1.0 / rSqd;
     double invRSqd4 = invRSqd*invRSqd*invRSqd*invRSqd;
     double invRSqd7 = invRSqd*invRSqd*invRSqd*invRSqd*invRSqd*invRSqd*invRSqd;
@@ -655,7 +648,7 @@ void PotentialCompute(){
 
             double rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
 
-            double f = calculateF(rSqd);
+            double f = calculateF2(rSqd);
                 
             for (int k = 0; k < 3; k++) {
                 double force = rij[k] * f;
