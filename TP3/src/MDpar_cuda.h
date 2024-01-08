@@ -34,3 +34,15 @@ void stopKernelTime (void) {
 
 	cout << endl << "Basic profiling: " << milliseconds << " ms have elapsed for the kernel execution" << endl << endl;
 }
+
+__device__ void addAtomic(double* address, double val) {
+    unsigned long long int* address_as_ull = (unsigned long long int*)address;
+    unsigned long long int old = *address_as_ull, assumed;
+
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+                        __double_as_longlong(val +
+                               __longlong_as_double(assumed)));
+    } while (assumed != old);
+}
