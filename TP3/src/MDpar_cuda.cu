@@ -330,8 +330,7 @@ int main()
         //Press = result[0];
         //Press = VelocityVerlet(dt, i+1, tfp, result);
 
-        double var;
-        var = VelocityVerlet(dt, i+1, tfp, &PE);
+        double var = VelocityVerlet(dt, i+1, tfp, &PE);
         Press = PressFac*var;
         
         //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -413,10 +412,6 @@ void initialize() {
         for (j=0; j<n; j++) {
             for (k=0; k<n; k++) {
                 if (p<N) {
-                    
-                    //r[p][0] = (i + 0.5)*pos;
-                    //r[p][1] = (j + 0.5)*pos;
-                    //r[p][2] = (k + 0.5)*pos;
 
                     r[p][0] = (i + 0.5)*pos;
                     r[p][1] = (j + 0.5)*pos;
@@ -507,7 +502,7 @@ double calculatePot(double r2){
     double term2 = quot*quot*quot;
     double term1 = term2 * term2;  
 
-    return 4.0 *(term1 - term2);
+    return 8.0 *(term1 - term2);
 }
 
 __device__
@@ -530,7 +525,6 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
 
     if (i < N - 1) {
         double ax = 0, ay = 0, az = 0;
-        double rij[3];
         double rSqd, f;
         double force1, force2, force3;
         double rij0, rij1, rij2;
@@ -625,7 +619,7 @@ void launchPotencialComputeKernel(double **PE) {
     }
     cudaFree(Pot_gpu);
     checkCUDAError("mem free");
-    **PE = **PE * 2;
+    //**PE = **PE * 2;
 }
 
 
@@ -700,7 +694,7 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     //  Update accellerations from updated positions
     //computeAccelerations();
     //result[1] = PotentialCompute();
-    launchPotencialComputeKernel(&Pot);
+    
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
@@ -717,10 +711,8 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
             }
         }
     }
-    
 
     return psum/(6*L*L);
-
 }
 
 
