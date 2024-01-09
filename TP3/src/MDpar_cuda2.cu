@@ -593,8 +593,8 @@ void launchPotencialComputeKernel (double **PE) {
 	cudaMemcpy (*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
 	checkCUDAError("memcpy d->h");
 
-    memcpy(a, x, 5000 * 3 * sizeof(double));
-    memcpy(r, y, 5000 * 3 * sizeof(double));
+    memcpy(a, x, 5000 * sizeof(double));
+    memcpy(r, y, 5000 * sizeof(double));
 
 	// free the device memory
 	cudaFree(r_gpu);
