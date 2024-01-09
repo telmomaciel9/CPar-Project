@@ -30,7 +30,7 @@
 #include "MDpar_cuda.h"
 
 // Number of particles
-int N = 5000;
+int N;
 //#define N 5000
 
 //  Lennard-Jones parameters in natural units!
@@ -59,7 +59,7 @@ double a[MAXPART][3];
 //  Force
 double F[MAXPART][3];
 
-#define MaxN 2160
+#define N 2160
 
 double transpostaR[3][N];
 
