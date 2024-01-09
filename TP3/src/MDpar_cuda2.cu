@@ -557,9 +557,9 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
             ay += force2;
             az += force3;
 
-            a1[j] -= force1;
-            a2[j] -= force2;
-            a3[j] -= force3;    
+            addAtomic(&a1[j], -force1);
+            addAtomic(&a2[j], -force2);
+            addAtomic(&a3[j], -force3);   
         }
 
         addAtomic(&a1[i], ax);
