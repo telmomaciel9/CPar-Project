@@ -557,7 +557,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
                 //a[j][k] -= force;
                 aa[k] += force;
 
-                addAtomic(&a1[i * 3 + k], -force);
+                addAtomic(&a1[j * 3 + k], -force);
             } 
 
             
