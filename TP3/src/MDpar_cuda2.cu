@@ -527,28 +527,30 @@ __global__
 void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, double *r2, double *r3, int N, double *Pot1_gpu) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     double Pot = 0.0;
-    
+
     if (i < N - 1) {
         double ax = 0, ay = 0, az = 0;
-        
+        double rij[3];
+        double rSqd, f;
+        double force1, force2, force3;
         
         double r1_i = r1[i];
         double r2_i = r2[i];
         double r3_i = r3[i];
 
         for (int j = i + 1; j < N; j++) {
-            double rij1 = r1_i - r1[j];
-            double rij2 = r2_i - r2[j];
-            double rij3 = r3_i - r3[j];
+            rij[0] = r1_i - r1[j];
+            rij[1] = r2_i - r2[j];
+            rij[2] = r3_i - r3[j];
 
-            double rSqd = rij1 * rij1 + rij2 * rij2 + rij3 * rij3;
+            rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
 
             Pot += calculatePot(rSqd);
-            double f = calculateF(rSqd);
+            f = calculateF(rSqd);
 
-            double force1 = rij1 * f;
-            double force2 = rij2 * f;
-            double force3 = rij3 * f;
+            force1 = rij1 * f;
+            force2 = rij2 * f;
+            force3 = rij3 * f;
 
             ax += force1;
             ay += force2;
@@ -556,12 +558,12 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
 
             a1[j] -= force1;
             a2[j] -= force2;
-            a3[j] -= force3;
+            a3[j] -= force3;    
         }
 
-        a1[i] += ax;
-        a2[i] += ay;
-        a3[i] += az;
+        addAtomic(&a1[i], ax);
+        addAtomic(&a2[i], ay);
+        addAtomic(&a3[i], az);
 
         
     }
