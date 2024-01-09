@@ -58,7 +58,7 @@ double a[MAXPART][3];
 //  Force
 double F[MAXPART][3];
 
-#define N 5000
+#define MaxN 2160
 
 // atom type
 char atype[10];
@@ -218,7 +218,7 @@ int main()
     scanf("%lf",&rho);
     
     //N = 10*216;
-    //N = 5000;
+    N = 5000;
     Vol = N/(rho*NA);
     
     Vol /= VolFac;
@@ -477,10 +477,10 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[][3], double rt[3][N]) {
+void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < N; j++) {
-            rt[i][j] = r[j][i];
+        for (int j = 0; j < MaxN; j++) {
+            transR[i][j] = r[j][i];
         }
     }
 }
