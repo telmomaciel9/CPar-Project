@@ -60,6 +60,10 @@ double F[MAXPART][3];
 
 //#define N 5000
 
+double transpostaR[3][5000];
+
+double transpostaA[3][5000];
+
 void transposeMatrix(double r[][3], double tr[3][5000]);
 
 
@@ -101,9 +105,7 @@ int main()
     char prefix[1000], tfn[1000], ofn[1000], afn[1000];
     FILE *tfp, *ofp, *afp;
 
-    double transpostaR[3][N];
-
-    double transpostaA[3][N];
+    
 
     
     
@@ -645,7 +647,7 @@ void launchPotencialComputeKernel (double **PE) {
 
 	// launch the kernel
 	//startKernelTime ();
-	potentialComputeKernel <<<100, 60>>>(da1, da2, da3, dr1, dr2, dr3, N, result);
+	PotentialComputeKernel <<<100, 60>>>(da1, da2, da3, dr1, dr2, dr3, N, result);
 	//stopKernelTime ();
 	checkCUDAError("kernel invocation");
 
