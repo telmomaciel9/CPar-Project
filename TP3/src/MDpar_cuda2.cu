@@ -524,7 +524,7 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *r1, double *r2, double *r2, double *a1, double *a2, double *a3, int N, double *Pot1_gpu){
+void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, double *a2, double *a3, int N, double *Pot1_gpu){
     double Pot=0.0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
