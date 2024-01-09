@@ -533,24 +533,25 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
         double rij[3];
         double rSqd, f;
         double force1, force2, force3;
+        double rij0, rij1, rij2;
         
         double r1_i = r1[i];
         double r2_i = r2[i];
         double r3_i = r3[i];
 
         for (int j = i + 1; j < N; j++) {
-            rij[0] = r1_i - r1[j];
-            rij[1] = r2_i - r2[j];
-            rij[2] = r3_i - r3[j];
+            rij0 = r1_i - r1[j];
+            rij1 = r2_i - r2[j];
+            rij2 = r3_i - r3[j];
 
-            rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
+            rSqd = rij0 * rij0 + rij1 * rij1 + rij2 * rij2;
 
             Pot += calculatePot(rSqd);
             f = calculateF(rSqd);
 
-            force1 = rij1 * f;
-            force2 = rij2 * f;
-            force3 = rij3 * f;
+            force1 = rij0 * f;
+            force2 = rij1 * f;
+            force3 = rij2 * f;
 
             ax += force1;
             ay += force2;
