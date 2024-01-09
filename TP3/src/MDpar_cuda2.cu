@@ -652,7 +652,7 @@ void PotentialCompute(){
 
 // returns sum of dv/dt*m/A (aka Pressure) from elastic collisions with walls
 //double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
-double VelocityVerlet(double dt, int iter, FILE *fp,double result[2]) {
+double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     int i, j;
     
     double psum = 0.;
