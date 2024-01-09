@@ -566,9 +566,9 @@ void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, doub
 
         }
 
-        addAtomic(&a1[i], -ax);
-        addAtomic(&a2[i], -ay);
-        addAtomic(&a3[i], -az);
+        addAtomic(&a1[i], ax);
+        addAtomic(&a2[i], ay);
+        addAtomic(&a3[i], az);
         
     }
 
