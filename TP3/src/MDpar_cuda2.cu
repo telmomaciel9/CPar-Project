@@ -284,6 +284,11 @@ int main()
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
     //computeAccelerations();
+
+    transposeMatrix(r, transpostaR);
+    transposeMatrix(a, transpostaA);
+
+
     PotentialCompute();
     
     // Print number of particles to the trajectory file
@@ -517,100 +522,160 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
-    double Pot=0.0;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    //for(int i = 0; i < N; i++){
-    // 	  a[i][0] = 0;
-	//    a[i][1] = 0;
-    //    a[i][2] = 0;
+void PotentialComputeKernel(double *transpostaA1, double *transpostaA2, double *transpostaA3, double *transpostaR1, double *transpostaR2, double *transpostaR3, int tam, double *PotF){
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    // int i;
+    double Pot = 0.;
+    //for (i = 0; i < N; i++) {  // Set all accelerations to zero (computeAcceleration)   
+    //    transpostaA1[i] = 0;
+    //    transpostaA2[i] = 0; // Isto o Cuda depois mete tudo a zeros
+    //    transpostaA3[i] = 0; // TODO!
     //}
 
-    if (i < N-1){
-        double rij[3];
-        double rSqd, f;
-        double aa[3] = {0}; 
+    if (id < tam-1) { // -1 ??
+        double r2;
+        double f, rSqd, conta1, conta2, conta3, b, c, d, g, h, e;
+        double rij[3]; 
+
+        // Get values needed inside the loop, outside from it, 
+        // so we don't have to access the array more than necessary.
+        b = 0;
+        c = 0;
+        d = 0;  
+
+        g = transpostaR1[id];
+        h = transpostaR2[id];
+        e = transpostaR3[id];
         
-        for (int j = i + 1; j < N; j++) {
-
-            for (int k = 0; k < 3; k++) {
-                //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r1[i * 3 + k] - r1[j * 3 + k];
-            } 
-
-            rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
-
-            Pot += calculatePot(rSqd);
-            f = calculateF(rSqd);
-
-            for (int k = 0; k < 3; k++) {
-                double force = rij[k] * f;
-                //a[i][k] += force;
-                //a[j][k] -= force;
-                aa[k] += force;
-
-                addAtomic(&a1[j * 3 + k], -force);
-            } 
-
+        for (int j=id+1; j<tam; j++){
+            // POTENTIAL CALCULUS
+            r2=0.;
             
+            r2 += (g-transpostaR1[j])*(g-transpostaR1[j]);
+            r2 += (h-transpostaR2[j])*(h-transpostaR2[j]);
+            r2 += (e-transpostaR3[j])*(e-transpostaR3[j]);
+            double quot = 1/(r2); // FIXME (1 e sigma)
+            Pot += 4.*(((quot *quot * quot)*(quot *quot * quot)) - (quot *quot * quot));
 
+
+            // COMPUTE ACCELERATIONS CALCULUS
+            rSqd = 0;
+            
+            rij[0] = g - transpostaR1[j];
+            rSqd += rij[0] * rij[0];
+
+            rij[1] = h - transpostaR2[j];
+            rSqd += rij[1] * rij[1];
+
+            rij[2] = e - transpostaR3[j];
+            rSqd += rij[2] * rij[2];
+
+
+            double invSqd = 1/rSqd;
+            double invHelp = invSqd * invSqd;
+            double invHelp2 = invHelp * invHelp;
+            f = 24 * (2*invHelp2*invHelp*invSqd - invHelp2);
+
+
+            conta1 = rij[0] * f;
+            conta2 = rij[1] * f;
+            conta3 = rij[2] * f;
+
+            b += conta1;
+            c += conta2;
+            d += conta3;
+
+            //transpostaA1[j] -= conta1;
+            //transpostaA2[j] -= conta2;
+            //transpostaA3[j] -= conta3;
+
+            addAtomic(&transpostaA1[j], -conta1);
+            addAtomic(&transpostaA2[j], -conta2);
+            addAtomic(&transpostaA3[j], -conta3);
         }
+        //transpostaA1[i] = b;
+        //transpostaA2[i] = c;
+        //transpostaA3[i] = d;
 
-        for (int k = 0; k < 3; k++) {
-            addAtomic(&a1[i * 3 + k], -aa[k]);
-        } 
+        addAtomic(&transpostaA1[id], b);
+        addAtomic(&transpostaA2[id], c);
+        addAtomic(&transpostaA3[id], d);
     }
-
-    addAtomic(Pot1_gpu, Pot);
-    //adicionar atomicamente o pot
+    addAtomic(PotF, Pot);
+    //return 2*Pot;
 }
 
 
 void launchPotencialComputeKernel (double **PE) {
-	// pointers to the device memory
-	double *r_gpu, *a_gpu, *Pot_gpu;
-    double *x,*y;
+    double *da1, *da2, *da3;
+    double *dr1, *dr2, *dr3;
+    //double *PotF;
+
+    double *result;
+    double *t1,*t2,*t3,*t4,*t5,*t6;
+
 	// declare variable with size of the array in bytes
-	//int bytes = SIZE * sizeof(float);
-    int bytes = N * 3 * sizeof(float);
-    x = (double*)malloc(bytes);
-    y = (double*)malloc(bytes);
+	int bytes = SIZE * sizeof(float); // FIXME
+    t1 = (double*)malloc(bytes);
+    t2 = (double*)malloc(bytes);
+    t3 = (double*)malloc(bytes);
+    t4 = (double*)malloc(bytes);
+    t5 = (double*)malloc(bytes);
+    t6 = (double*)malloc(bytes);
 
 	// allocate the memory on the device
-	cudaMalloc ((void**) &r_gpu, bytes);
-	cudaMalloc ((void**) &a_gpu, bytes);
-	cudaMalloc ((void**) &Pot_gpu, sizeof(double));
+	cudaMalloc ((void**) &da1, bytes);
+    cudaMalloc ((void**) &da2, bytes);
+    cudaMalloc ((void**) &da3, bytes);
+	cudaMalloc ((void**) &dr1, bytes);
+    cudaMalloc ((void**) &dr2, bytes);
+    cudaMalloc ((void**) &dr3, bytes);
+    cudaMalloc ((void**) &result, sizeof(double));
 	checkCUDAError("mem allocation");
 
-
 	// copy inputs to the device
-    cudaMemset (a_gpu, 0, bytes);
-	cudaMemcpy (r_gpu, r, bytes, cudaMemcpyHostToDevice);
-    cudaMemset (Pot_gpu, 0, sizeof(double));
+    cudaMemset (da1, 0, bytes);
+    cudaMemset (da2, 0, bytes);
+    cudaMemset (da3, 0, bytes);
+    cudaMemcpy (dr1, transpostaR[0], bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy (dr2, transpostaR[1], bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy (dr3, transpostaR[2], bytes, cudaMemcpyHostToDevice);
+    cudaMemset (result,0, sizeof(double));
 	checkCUDAError("memcpy h->d");
 
 	// launch the kernel
-	startKernelTime ();
-	PotentialComputeKernel <<< 100, 60 >>> (r_gpu, a_gpu, Pot_gpu, N);
-	stopKernelTime ();
+	//startKernelTime ();
+	potentialComputeKernel <<<100, 60>>>(da1, da2, da3, dr1, dr2, dr3, N, result);
+	//stopKernelTime ();
 	checkCUDAError("kernel invocation");
 
 	// copy the output to the host
-    cudaMemcpy (x, a_gpu, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (y, r_gpu, bytes, cudaMemcpyDeviceToHost);
+	cudaMemcpy (t1, da1, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy (t2, da2, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy (t3, da3, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy (t4, dr1, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy (t5, dr2, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy (t6, dr3, bytes, cudaMemcpyDeviceToHost);
 
-	cudaMemcpy (*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy (*PE, result, sizeof(double), cudaMemcpyDeviceToHost);
 	checkCUDAError("memcpy d->h");
 
-    memcpy(a, x, 5000 * sizeof(double));
-    memcpy(r, y, 5000 * sizeof(double));
+    memcpy(transpostaA[0], t1, 5000 * sizeof(double));
+    memcpy(transpostaA[1], t2, 5000 * sizeof(double));
+    memcpy(transpostaA[2], t3, 5000 * sizeof(double));
+    memcpy(transpostaR[0], t4, 5000 * sizeof(double));
+    memcpy(transpostaR[1], t5, 5000 * sizeof(double));
+    memcpy(transpostaR[2], t6, 5000 * sizeof(double));
 
 	// free the device memory
-	cudaFree(r_gpu);
-	cudaFree(a_gpu);
-	cudaFree(Pot_gpu);
-	checkCUDAError("mem free");
+	cudaFree(da1);
+    cudaFree(da2);
+    cudaFree(da3);
+    cudaFree(dr1);
+    cudaFree(dr2);
+    cudaFree(dr3);
+    cudaFree(result);
+    checkCUDAError("mem free");
     **PE = **PE * 2;
 }
 
@@ -631,9 +696,9 @@ void PotentialCompute(){
     int i, j;
 
     for(int i = 0; i < N; i++){
-        a[i][0] = 0;
-	    a[i][1] = 0;
-        a[i][2] = 0;
+        transpostaA[0][i] = 0;
+        transpostaA[1][i] = 0;
+        transpostaA[2][i] = 0;
     }
 
     for (i = 0; i < N-1; i++) { 
@@ -644,7 +709,7 @@ void PotentialCompute(){
         for(j = i + 1; j < N; j++) {
 
             for (int k = 0; k < 3; k++) {
-                rij[k] = r[i][k] - r[j][k];
+                rij[k] = transpostaR[k][i] - transpostaR[k][j];
             } 
 
             rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
@@ -653,8 +718,8 @@ void PotentialCompute(){
                 
             for (int k = 0; k < 3; k++) {
                 force = rij[k] * f;
-                a[i][k] += force;
-                a[j][k] -= force;
+                transpostaA[k][i] += force;
+                transpostaA[k][j] -= force;
             }     
         }
     }
@@ -678,9 +743,8 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     //printf("  Updated Positions!\n");
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            r[i][j] += v[i][j]*dt + 0.5*a[i][j]*dt*dt;
-            
-            v[i][j] += 0.5*a[i][j]*dt;
+            transpostaR[j][i] += v[i][j]*dt + 0.5*transpostaA[j][i]*dt*dt;
+            v[i][j] += 0.5*transpostaA[j][i]*dt;
         }
         //printf("  %i  %6.4e   %6.4e   %6.4e\n",i,r[i][0],r[i][1],r[i][2]);
     }
@@ -691,14 +755,14 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            v[i][j] += 0.5*a[i][j]*dt;
+            v[i][j] += 0.5*transpostaA[j][i]*dt;
         }
     }
     
     // Elastic walls
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
-            if (r[i][j]<0. || r[i][j]>=L) {
+            if (transpostaR[j][i]<0. || transpostaR[j][i]>=L) {
                 v[i][j] *=-1.; //- elastic walls
                 psum += 2*m*fabs(v[i][j])/dt;  // contribution to pressure from "left" walls
             }
