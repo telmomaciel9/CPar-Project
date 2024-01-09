@@ -573,7 +573,7 @@ void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, doub
 }
 
 
-void PotentialEcomputeAccelerations(double **PE) {
+void launchPotencialComputeKernel(double **PE) {
     // pointers to the device memory
     double *da[3], *dr[3];
     double *Pot_gpu;
