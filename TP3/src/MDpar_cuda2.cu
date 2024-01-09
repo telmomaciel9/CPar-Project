@@ -477,10 +477,10 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
+void transposeMatrix(double r[][3], double rt[3][N]) {
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < MaxN; j++) {
-            transR[i][j] = r[j][i];
+        for (int j = 0; j < N; j++) {
+            rt[i][j] = r[j][i];
         }
     }
 }
