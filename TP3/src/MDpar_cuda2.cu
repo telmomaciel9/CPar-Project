@@ -562,8 +562,9 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
         a2[i] += ay;
         a3[i] += az;
 
-        addAtomic(Pot1_gpu, Pot);
+        
     }
+    addAtomic(Pot1_gpu, Pot);
 }
 
 
