@@ -543,7 +543,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
 
             for (int k = 0; k < 3; k++) {
                 //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r1[k][i] - r1[k][j];
+                rij[k] = r1[i * 3 + k] - r1[j * 3 + k];
             } 
 
             rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
@@ -557,7 +557,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
                 //a[j][k] -= force;
                 aa[k] += force;
 
-                addAtomic(&a1[k][j], -force);
+                addAtomic(&a1[i * 3 + k], -force);
             } 
 
             
@@ -565,7 +565,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
         }
 
         for (int k = 0; k < 3; k++) {
-            addAtomic(&a1[k][i], -aa[k]);
+            addAtomic(&a1[i * 3 + k], -aa[k]);
         } 
     }
 
