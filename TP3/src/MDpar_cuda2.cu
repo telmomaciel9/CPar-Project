@@ -537,36 +537,40 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
     if (i < N-1){
         double rij[3];
         double rSqd, f;
-        double aa[3] = {0}; 
+        double ax, ay, az; 
+        double force1, force2, force3;
         
         for (int j = i + 1; j < N; j++) {
 
-            for (int k = 0; k < 3; k++) {
-                //rij[k] = r[i][k] - r[j][k];
-                rij[k] = r1[i * 3 + k] - r1[j * 3 + k];
-            } 
+            rij[0] = r1[i * 3] - r1[j * 3];
+            rij[1] = r1[i * 3 + 1] - r1[j * 3 + 1];
+            rij[2] = r1[i * 3 + 2] - r1[j * 3 + 2];
 
             rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
 
             Pot += calculatePot(rSqd);
             f = calculateF(rSqd);
 
-            for (int k = 0; k < 3; k++) {
-                double force = rij[k] * f;
-                //a[i][k] += force;
-                //a[j][k] -= force;
-                aa[k] += force;
+                    
+            force1 = rij[0] * f;
+            force2 = rij[1] * f;
+            force3 = rij[2] * f;
 
-                addAtomic(&a1[j * 3 + k], -force);
-            } 
+            ax += force1;
+            ay += force2;
+            az += force3;
 
+            addAtomic(&a1[i * 3], -ax);
+            addAtomic(&a1[i * 3 + 1], -ay);
+            addAtomic(&a1[i * 3 + 2], -az);
             
 
         }
 
-        for (int k = 0; k < 3; k++) {
-            addAtomic(&a1[i * 3 + k], -aa[k]);
-        } 
+        addAtomic(&a1[i * 3], -ax);
+        addAtomic(&a1[i * 3 + 1], -ay);
+        addAtomic(&a1[i * 3 + 2], -az);
+        
     }
 
     addAtomic(Pot1_gpu, Pot);
