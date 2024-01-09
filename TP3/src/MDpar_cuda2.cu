@@ -528,7 +528,7 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
     double Pot=0.0;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < N-1){
+    if (i < N){
         double rij[3];
         double rSqd, f;
         double ax = 0, ay = 0, az = 0;
