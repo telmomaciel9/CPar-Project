@@ -581,41 +581,40 @@ void launchPotencialComputeKernel(double **PE) {
     double *da, *dr, *Pot_gpu;
     const int bytes = SIZE * 3 * sizeof(double);
 
-    // Alocar memória na GPU
+    // Allocate memory on the device
     cudaMalloc((void **)&dr, bytes);
-    cudaMalloc((void **)&da, bytes);
+    cudaMalloc((void **)&da, bytes * 2); // Allocate space for 2 matrices
     cudaMalloc((void **)&Pot_gpu, sizeof(double));
     checkCUDAError("mem allocation");
 
-    // Copiar dados para a GPU
-    for (int i = 0; i < 3; ++i) {
-        cudaMemcpy(dr + i * SIZE, transpostaR[i], SIZE * sizeof(double), cudaMemcpyHostToDevice);
-    }
-    cudaMemset(da, 0, bytes);
+    // Copy inputs to the device
+    cudaMemcpy(dr, transpostaR[0], bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(dr + SIZE, transpostaR[1], bytes, cudaMemcpyHostToDevice);
+    cudaMemcpy(dr + 2 * SIZE, transpostaR[2], bytes, cudaMemcpyHostToDevice);
+    cudaMemset(da, 0, bytes * 2); // Initialize both matrices with zeros
     cudaMemset(Pot_gpu, 0, sizeof(double));
     checkCUDAError("memcpy h->d");
 
-    // Lançar o kernel
+    // Launch the kernel
     PotentialComputeKernel<<<100, 60>>>(da, da + SIZE, da + 2 * SIZE, dr, dr + SIZE, dr + 2 * SIZE, SIZE, Pot_gpu);
     checkCUDAError("kernel invocation");
 
-    // Copiar os resultados de volta para a CPU
+    // Copy the output to the host
     cudaMemcpy(*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaA[0], da, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaA[1], da + SIZE, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaA[2], da + 2 * SIZE, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaR[0], dr, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaR[1], dr + SIZE, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy(transpostaR[2], dr + 2 * SIZE, SIZE * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaA[0], da, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaA[1], da + SIZE, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaA[2], da + 2 * SIZE, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaR[0], dr, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaR[1], dr + SIZE, bytes, cudaMemcpyDeviceToHost);
+    cudaMemcpy(transpostaR[2], dr + 2 * SIZE, bytes, cudaMemcpyDeviceToHost);
 
-    // Liberar memória alocada na GPU
+    // Free the device memory
     cudaFree(dr);
     cudaFree(da);
     cudaFree(Pot_gpu);
     checkCUDAError("mem free");
     **PE = **PE * 2;
 }
-
 
 
 
