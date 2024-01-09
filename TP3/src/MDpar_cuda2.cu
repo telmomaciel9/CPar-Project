@@ -526,10 +526,11 @@ double calculateF(double rSqd){
 __global__
 void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, double *r2, double *r3, int N, double *Pot1_gpu) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-
+    double Pot = 0.0;
+    
     if (i < N - 1) {
         double ax = 0, ay = 0, az = 0;
-        double Pot = 0.0;
+        
         
         double r1_i = r1[i];
         double r2_i = r2[i];
