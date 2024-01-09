@@ -538,6 +538,7 @@ void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, doub
         double rij[3];
         double rSqd, f;
         double ax = 0, ay = 0, az = 0;
+        double force1, force2, force3;
  
         
         for (int j = i + 1; j < N; j++) {
@@ -551,14 +552,17 @@ void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, doub
             Pot += calculatePot(rSqd);
             f = calculateF(rSqd);
 
+            force1 = rij[0] * f;
+            force2 = rij[1] * f;
+            force3 = rij[2] * f;
 
-            ax += rij[0] * f;
-            ay += rij[1] * f;
-            az += rij[2] * f;
+            ax += force1;
+            ay += force2;
+            az += force3;
 
-            addAtomic(&a1[j], -ax);
-            addAtomic(&a2[j], -ay);
-            addAtomic(&a3[j], -az);
+            addAtomic(&a1[j], -force1);
+            addAtomic(&a2[j], -force2);
+            addAtomic(&a3[j], -force3);
 
         }
 
@@ -574,74 +578,46 @@ void PotentialComputeKernel(double *r1, double *r2, double *r3, double *a1, doub
 
 
 void launchPotencialComputeKernel(double **PE) {
-    double *da1, *da2, *da3;
-    double *dr1, *dr2, *dr3;
-    //double *PotF;
+    // pointers to the device memory
+    double *da[3], *dr[3];
+    double *Pot_gpu;
+    const int bytes = SIZE * sizeof(double);
 
-    double *result;
-    double *t1,*t2,*t3,*t4,*t5,*t6;
+    // Allocate memory on the device
+    
+    for (int i = 0; i < 3; ++i) {
+        cudaMalloc((void **)&dr[i], bytes);
+        cudaMalloc((void **)&da[i], bytes);
+    }
+    cudaMalloc((void **)&Pot_gpu, sizeof(double));
+    checkCUDAError("mem allocation");
 
-	// declare variable with size of the array in bytes
-	int bytes = SIZE * sizeof(float); // FIXME
-    t1 = (double*)malloc(bytes);
-    t2 = (double*)malloc(bytes);
-    t3 = (double*)malloc(bytes);
-    t4 = (double*)malloc(bytes);
-    t5 = (double*)malloc(bytes);
-    t6 = (double*)malloc(bytes);
+    // Copy inputs to the device
+    for (int i = 0; i < 3; ++i) {
+        cudaMemcpy(dr[i], transpostaR[i], bytes, cudaMemcpyHostToDevice);
+        cudaMemset(da[i], 0, bytes);
+    }
+    cudaMemset(Pot_gpu, 0, sizeof(double));
+    checkCUDAError("memcpy h->d");
 
-	// allocate the memory on the device
-	cudaMalloc ((void**) &da1, bytes);
-    cudaMalloc ((void**) &da2, bytes);
-    cudaMalloc ((void**) &da3, bytes);
-	cudaMalloc ((void**) &dr1, bytes);
-    cudaMalloc ((void**) &dr2, bytes);
-    cudaMalloc ((void**) &dr3, bytes);
-    cudaMalloc ((void**) &result, sizeof(double));
-	checkCUDAError("mem allocation");
+    // Launch the kernel
+    PotentialComputeKernel<<<100, 60>>>(da[0], da[1], da[2], dr[0], dr[1], dr[2], N, Pot_gpu);
+    checkCUDAError("kernel invocation");
 
-	// copy inputs to the device
-    cudaMemset (da1, 0, bytes);
-    cudaMemset (da2, 0, bytes);
-    cudaMemset (da3, 0, bytes);
-    cudaMemcpy (dr1, transpostaR[0], bytes, cudaMemcpyHostToDevice);
-    cudaMemcpy (dr2, transpostaR[1], bytes, cudaMemcpyHostToDevice);
-    cudaMemcpy (dr3, transpostaR[2], bytes, cudaMemcpyHostToDevice);
-    cudaMemset (result,0, sizeof(double));
-	checkCUDAError("memcpy h->d");
+    // Copy the output to the host
+    for (int i = 0; i < 3; ++i) {
+        cudaMemcpy(transpostaA[i], da[i], bytes, cudaMemcpyDeviceToHost);
+        cudaMemcpy(transpostaR[i], dr[i], bytes, cudaMemcpyDeviceToHost);
+    }
+    cudaMemcpy(*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
+    checkCUDAError("memcpy d->h");
 
-	// launch the kernel
-	//startKernelTime ();
-	PotentialComputeKernel <<<100, 60>>>(da1, da2, da3, dr1, dr2, dr3, N, result);
-	//stopKernelTime ();
-	checkCUDAError("kernel invocation");
-
-	// copy the output to the host
-	cudaMemcpy (t1, da1, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (t2, da2, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (t3, da3, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (t4, dr1, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (t5, dr2, bytes, cudaMemcpyDeviceToHost);
-    cudaMemcpy (t6, dr3, bytes, cudaMemcpyDeviceToHost);
-
-    cudaMemcpy (*PE, result, sizeof(double), cudaMemcpyDeviceToHost);
-	checkCUDAError("memcpy d->h");
-
-    memcpy(transpostaA[0], t1, 5000 * sizeof(double));
-    memcpy(transpostaA[1], t2, 5000 * sizeof(double));
-    memcpy(transpostaA[2], t3, 5000 * sizeof(double));
-    memcpy(transpostaR[0], t4, 5000 * sizeof(double));
-    memcpy(transpostaR[1], t5, 5000 * sizeof(double));
-    memcpy(transpostaR[2], t6, 5000 * sizeof(double));
-
-	// free the device memory
-	cudaFree(da1);
-    cudaFree(da2);
-    cudaFree(da3);
-    cudaFree(dr1);
-    cudaFree(dr2);
-    cudaFree(dr3);
-    cudaFree(result);
+    // Free the device memory
+    for (int i = 0; i < 3; ++i) {
+        cudaFree(dr[i]);
+        cudaFree(da[i]);
+    }
+    cudaFree(Pot_gpu);
     checkCUDAError("mem free");
     **PE = **PE * 2;
 }
