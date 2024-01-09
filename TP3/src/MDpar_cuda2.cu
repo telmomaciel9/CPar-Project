@@ -524,51 +524,48 @@ double calculateF(double rSqd){
 #define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 __global__
-void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, double *r2, double *r3, int N, double *Pot1_gpu){
-    double Pot=0.0;
+void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, double *r2, double *r3, int N, double *Pot1_gpu) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (i < N-2){
-        double rij[3];
-        double rSqd, f;
+    if (i < N - 1) {
         double ax = 0, ay = 0, az = 0;
-        double force1, force2, force3;
- 
+        double Pot = 0.0;
         
+        double r1_i = r1[i];
+        double r2_i = r2[i];
+        double r3_i = r3[i];
+
         for (int j = i + 1; j < N; j++) {
+            double rij1 = r1_i - r1[j];
+            double rij2 = r2_i - r2[j];
+            double rij3 = r3_i - r3[j];
 
-            rij[0] = r1[i] - r1[j];
-            rij[1] = r2[i] - r2[j];
-            rij[2] = r3[i] - r3[j];
-
-            rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
+            double rSqd = rij1 * rij1 + rij2 * rij2 + rij3 * rij3;
 
             Pot += calculatePot(rSqd);
-            f = calculateF(rSqd);
+            double f = calculateF(rSqd);
 
-            force1 = rij[0] * f;
-            force2 = rij[1] * f;
-            force3 = rij[2] * f;
+            double force1 = rij1 * f;
+            double force2 = rij2 * f;
+            double force3 = rij3 * f;
 
             ax += force1;
             ay += force2;
             az += force3;
 
-            addAtomic(&a1[j], -force1);
-            addAtomic(&a2[j], -force2);
-            addAtomic(&a3[j], -force3);
-
+            a1[j] -= force1;
+            a2[j] -= force2;
+            a3[j] -= force3;
         }
 
-        addAtomic(&a1[i], ax);
-        addAtomic(&a2[i], ay);
-        addAtomic(&a3[i], az);
-        
-    }
+        a1[i] += ax;
+        a2[i] += ay;
+        a3[i] += az;
 
-    addAtomic(Pot1_gpu, Pot);
-    //adicionar atomicamente o pot
+        atomicAdd(Pot1_gpu, Pot);
+    }
 }
+
 
 
 void launchPotencialComputeKernel(double **PE) {
