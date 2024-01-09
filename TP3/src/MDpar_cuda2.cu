@@ -106,6 +106,14 @@ int main()
     double transpostaA[3][N];
 
     void transposeMatrix(double r[][3], double tr[3][N]);
+
+    void transposeMatrix(double r[][3], double tr[3][N]) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < N; j++) {
+            tr[i][j] = r[j][i];
+        }
+    }
+}
     
     
     printf("\n  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -486,13 +494,7 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[][3], double tr[3][N]) {
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < N; j++) {
-            tr[i][j] = r[j][i];
-        }
-    }
-}
+
 
 __device__
 double calculatePot(double r2){
