@@ -65,7 +65,7 @@ double transpostaR[3][N];
 
 double transpostaA[3][N];
 
-void transposeMatrix(double r[][3], double tr[3][N])
+void transposeMatrix(double r[][3], double tr[3][N]);
 
 
 // atom type
