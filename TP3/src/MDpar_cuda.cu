@@ -596,7 +596,9 @@ void launchPotencialComputeKernel(double **PE) {
     checkCUDAError("memcpy h->d");
 
     // Launch the kernel
+    startKernelTime();
     PotentialComputeKernel<<<100, 60>>>(da[0], da[1], da[2], dr[0], dr[1], dr[2], N, Pot_gpu);
+    stopKernelTime();
     checkCUDAError("kernel invocation");
 
     // Copy the output to the host
