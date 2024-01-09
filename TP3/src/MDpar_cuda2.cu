@@ -626,12 +626,12 @@ void PotentialCompute(){
         a[i][2] = 0;
     }
 
-    for (i = 0; i < N; i++) { 
+    for (i = 0; i < N-1; i++) { 
 
         double rij[3];
         double rSqd, f, force;
 
-        for(j = i + 1; j < N-1; j++) {
+        for(j = i + 1; j < N; j++) {
 
             for (int k = 0; k < 3; k++) {
                 rij[k] = r[i][k] - r[j][k];
