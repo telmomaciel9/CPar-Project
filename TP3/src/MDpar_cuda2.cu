@@ -30,7 +30,7 @@
 #include "MDpar_cuda.h"
 
 // Number of particles
-int N;
+//int N;
 
 //  Lennard-Jones parameters in natural units!
 double sigma = 1.;
