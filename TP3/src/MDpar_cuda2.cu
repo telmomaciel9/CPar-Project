@@ -61,6 +61,12 @@ double F[MAXPART][3];
 
 #define MaxN 2160
 
+double transpostaR[3][N];
+
+double transpostaA[3][N];
+
+void transposeMatrix(double r[][3], double tr[3][N])
+
 
 // atom type
 char atype[10];
@@ -479,10 +485,10 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[MAXPART][3], double transR[3][MaxN]) {
+void transposeMatrix(double r[][3], double tr[3][N]) {
     for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < MaxN; j++) {
-            transR[i][j] = r[j][i];
+        for (int j = 0; j < N; j++) {
+            tr[i][j] = r[j][i];
         }
     }
 }
@@ -523,7 +529,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
     if (i < N-1){
         double rij[3];
         double rSqd, f;
-        double a[3] = {0}; 
+        double aa[3] = {0}; 
         
         for (int j = i + 1; j < N; j++) {
 
@@ -541,7 +547,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
                 double force = rij[k] * f;
                 //a[i][k] += force;
                 //a[j][k] -= force;
-                a[k] += force;
+                aa[k] += force;
 
                 addAtomic(&a1[j * 3 + k], -force);
             } 
@@ -551,7 +557,7 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
         }
 
         for (int k = 0; k < 3; k++) {
-            addAtomic(&a1[i * 3 + k], -a[k]);
+            addAtomic(&a1[i * 3 + k], -aa[k]);
         } 
     }
 
