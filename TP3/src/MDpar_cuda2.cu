@@ -60,7 +60,7 @@ double F[MAXPART][3];
 
 //#define N 5000
 
-
+void transposeMatrix(double r[][3], double tr[3][5000]);
 
 
 // atom type
@@ -105,7 +105,7 @@ int main()
 
     double transpostaA[3][N];
 
-    void transposeMatrix(double r[][3], double tr[3][N]);
+    
     
     
     printf("\n  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
