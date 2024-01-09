@@ -60,11 +60,7 @@ double F[MAXPART][3];
 
 //#define N 5000
 
-double transpostaR[3][N];
 
-double transpostaA[3][N];
-
-void transposeMatrix(double r[][3], double tr[3][N]);
 
 
 // atom type
@@ -104,6 +100,12 @@ int main()
     double KE, PE, mvs, gc, Z;
     char prefix[1000], tfn[1000], ofn[1000], afn[1000];
     FILE *tfp, *ofp, *afp;
+
+    double transpostaR[3][N];
+
+    double transpostaA[3][N];
+
+    void transposeMatrix(double r[][3], double tr[3][N]);
     
     
     printf("\n  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
