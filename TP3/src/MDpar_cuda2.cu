@@ -74,13 +74,14 @@ double VelocityVerlet(double dt, int iter, FILE *fp, double* PE);
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
 //void computeAccelerations();
+void PotentialCompute();
 //  Numerical Recipes function for generation gaussian distribution
 double gaussdist();
 //  Initialize velocities according to user-supplied initial Temperature (Tinit)
 void initializeVelocities();
 //  Compute total potential energy from particle coordinates
+void launchPotencialComputeKernel();
 //double Potential();
-void PotentialCompute();
 //  Compute mean squared velocity from particle velocities
 double MeanSquaredVelocity();
 //  Compute total kinetic energy from particle mass and velocities
@@ -315,7 +316,7 @@ int main()
 
         double var;
         var = VelocityVerlet(dt, i+1, tfp, &PE);
-        Press *= PressFac*var;
+        Press = PressFac*var;
         
         //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         //  Now we would like to calculate somethings about the system:
