@@ -31,6 +31,7 @@
 
 // Number of particles
 //int N;
+#define N 5000
 
 //  Lennard-Jones parameters in natural units!
 double sigma = 1.;
@@ -59,7 +60,7 @@ double a[MAXPART][3];
 double F[MAXPART][3];
 
 #define MaxN 2160
-#define N 5000
+
 
 // atom type
 char atype[10];
