@@ -58,7 +58,7 @@ double a[MAXPART][3];
 //  Force
 double F[MAXPART][3];
 
-#define N 5000
+#define MaxN 2160
 
 // atom type
 char atype[10];
