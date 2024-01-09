@@ -490,7 +490,7 @@ double calculatePot(double r2){
     double term2 = quot*quot*quot;
     double term1 = term2 * term2;  
 
-    return 8.0 *(term1 - term2);
+    return 4.0 *(term1 - term2);
 }
 
 __device__
@@ -517,12 +517,12 @@ void PotentialComputeKernel(double *r1,double *a1, double *Pot1_gpu, int N){
     //    a[i][2] = 0;
     //}
 
-    if (i < N){
+    if (i < N-1){
         double rij[3];
         double rSqd, f;
         double a[3] = {0}; 
         
-        for (int j = i - 1; j >= 0; j--) {
+        for (int j = i + 1; j < N; j++) {
 
             for (int k = 0; k < 3; k++) {
                 //rij[k] = r[i][k] - r[j][k];
@@ -593,8 +593,8 @@ void launchPotencialComputeKernel (double **PE) {
 	cudaMemcpy (*PE, Pot_gpu, sizeof(double), cudaMemcpyDeviceToHost);
 	checkCUDAError("memcpy d->h");
 
-    memcpy(a, x, 5000 * sizeof(double));
-    memcpy(r, y, 5000 * sizeof(double));
+    memcpy(a, x, 5000 * 3 * sizeof(double));
+    memcpy(r, y, 5000 * 3 * sizeof(double));
 
 	// free the device memory
 	cudaFree(r_gpu);
@@ -618,27 +618,31 @@ double calculateF2(double rSqd){
 }
 
 void PotentialCompute(){
-    
+    int i, j;
+
     for(int i = 0; i < N; i++){
         a[i][0] = 0;
 	    a[i][1] = 0;
         a[i][2] = 0;
     }
 
-    for (int i = 0; i < N; i++) { 
-        for (int j = i - 1; j >= 0; j--) {
-            double rij[3];
+    for (i = 0; i < N; i++) { 
+
+        double rij[3];
+        double rSqd, f, force;
+
+        for(j = i + 1; j < N-1; j++) {
 
             for (int k = 0; k < 3; k++) {
                 rij[k] = r[i][k] - r[j][k];
             } 
 
-            double rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
+            rSqd = rij[0] * rij[0] + rij[1] * rij[1] + rij[2] * rij[2];
 
-            double f = calculateF2(rSqd);
+            f = calculateF2(rSqd);
                 
             for (int k = 0; k < 3; k++) {
-                double force = rij[k] * f;
+                force = rij[k] * f;
                 a[i][k] += force;
                 a[j][k] -= force;
             }     
