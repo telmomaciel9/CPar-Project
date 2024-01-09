@@ -58,7 +58,7 @@ double a[MAXPART][3];
 //  Force
 double F[MAXPART][3];
 
-#define MaxN 2160
+#define N 5000
 
 // atom type
 char atype[10];
@@ -218,7 +218,7 @@ int main()
     scanf("%lf",&rho);
     
     //N = 10*216;
-    N = 5000;
+    //N = 5000;
     Vol = N/(rho*NA);
     
     Vol /= VolFac;
