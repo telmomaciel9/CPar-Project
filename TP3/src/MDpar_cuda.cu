@@ -515,7 +515,7 @@ double calculatePot(double r2){
     double term2 = quot*quot*quot;
     double term1 = term2 * term2;  
 
-    return 4.0 *(term1 - term2);
+    return 8.0 *(term1 - term2);
 }
 
 __device__
@@ -657,7 +657,6 @@ void launchPotencialComputeKernel(double **PE) {
     }
     cudaFree(Pot_gpu);
     checkCUDAError("mem free");
-    **PE = **PE * 2;
 }
 
 
