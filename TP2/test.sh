@@ -5,7 +5,7 @@
 #SBATCH --exclusive
 
 
-threads=(1 2 4 20 40)
+threads=(1 2 4 8 16 32 40)
 
 
 for nthreads in "${threads[@]}"
