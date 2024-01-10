@@ -285,11 +285,11 @@ int main()
     //  Based on their positions, calculate the ininial intermolecular forces
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
-    computeAccelerations();
+    
 
     transposeMatrix(r, transpostaR);
     transposeMatrix(a, transpostaA);
-
+    computeAccelerations();
 
     //PotentialCompute();
     
