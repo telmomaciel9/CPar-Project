@@ -1,5 +1,5 @@
 #!/bin/sh
-#BATCH --time=15:00
+#BATCH --time=10:00
 #SBATCH --partition=cpar
 #SBATCH --constraint=k20
 #SBATCH --ntasks=40
@@ -17,7 +17,8 @@ run_cuda_program() {
     local output_file="$OUTPUT_DIR/result_${num_threads}.txt"
 
     echo "\n Running CUDA program for N = $n with $num_threads threads"
-    nvprof --metrics sm_efficiency,shared_efficiency,achieved_occupancy,warp_execution_efficiency ./bin/MDpar_cuda $num_threads $n < ./inputdata.txt  > "$output_file"
+    time ./bin/MDpar_cuda $num_threads $n < ./inputdata.txt  > "$output_file"
+    #nvprof --metrics sm_efficiency,shared_efficiency,achieved_occupancy,warp_execution_efficiency ./bin/MDpar_cuda $num_threads $n < ./inputdata.txt  > "$output_file"
 }
 
 
