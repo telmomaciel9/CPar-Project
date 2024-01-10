@@ -30,7 +30,7 @@
 #include "MDpar_cuda.h"
 
 // Number of particles
-int N = 5000;
+int N;
 
 //  Lennard-Jones parameters in natural units!
 double sigma = 1.;
@@ -60,11 +60,11 @@ double F[MAXPART][3];
 
 //#define N 5000
 
-double transpostaR[3][5000];
+double transpostaR[3][MAXPART];
 
-double transpostaA[3][5000];
+double transpostaA[3][MAXPART];
 
-void transposeMatrix(double r[][3], double tr[3][5000]);
+void transposeMatrix(double r[][3], double tr[3][MAXPART]);
 
 
 // atom type
@@ -93,8 +93,9 @@ void launchPotencialComputeKernel();
 double MeanSquaredVelocity();
 //  Compute total kinetic energy from particle mass and velocities
 double Kinetic();
+int num_threads = 0;
 
-int main()
+int main(int argc, char *argv[])
 {
     
     //  variable delcarations
@@ -105,9 +106,17 @@ int main()
     char prefix[1000], tfn[1000], ofn[1000], afn[1000];
     FILE *tfp, *ofp, *afp;
 
-    
+	N = 5000;
+    num_threads = 256;
 
-    
+    if (argc >= 2) {
+        num_threads = std::atoi(argv[1]);
+    }
+
+    if (argc >= 3) {
+        N = std::atoi(argv[2]);
+    }
+
     
     
     printf("\n  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -286,7 +295,6 @@ int main()
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
     
-
     transposeMatrix(r, transpostaR);
     transposeMatrix(a, transpostaA);
     computeAccelerations();
@@ -493,7 +501,7 @@ double Kinetic() { //Write Function here!
     
 }
 
-void transposeMatrix(double r[][3], double tr[3][5000]) {
+void transposeMatrix(double r[][3], double tr[3][MAXPART]) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < N; j++) {
             tr[i][j] = r[j][i];
@@ -519,16 +527,18 @@ double calculateF(double rSqd){
     return 24 * (2 * invRSqd7 - invRSqd4);
 }
 
-#define NUM_BLOCKS 128
-#define NUM_THREADS_PER_BLOCK 256
-#define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
+
 
 __global__
 void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, double *r2, double *r3, int N, double *Pot1_gpu) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    double Pot = 0.0;
+    
+    extern __shared__ double sharedMem[];
+
+    //double Pot = 0.0;
 
     if (i < N - 1) {
+        double partialPot = 0.0;
         double ax = 0, ay = 0, az = 0;
         double rSqd, f;
         double force1, force2, force3;
@@ -545,7 +555,8 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
 
             rSqd = rij0 * rij0 + rij1 * rij1 + rij2 * rij2;
 
-            Pot += calculatePot(rSqd);
+            //Pot += calculatePot(rSqd);
+            partialPot += calculatePot(rSqd);
             f = calculateF(rSqd);
 
             force1 = rij0 * f;
@@ -565,18 +576,35 @@ void PotentialComputeKernel(double *a1, double *a2, double *a3, double *r1, doub
         addAtomic(&a2[i], ay);
         addAtomic(&a3[i], az);
 
+        //sharedMem[threadIdx.x] = Pot;
+        sharedMem[threadIdx.x] = partialPot;
+        __syncthreads();
+
+        // Perform parallel reduction to compute the total potential
+        for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
+            if (threadIdx.x < stride) {
+                sharedMem[threadIdx.x] += sharedMem[threadIdx.x + stride];
+            }
+            __syncthreads();
+        }
+
+        // Write the total potential to global memory
+        if (threadIdx.x == 0) {
+            addAtomic(Pot1_gpu, sharedMem[0]);
+        }
         
     }
-    addAtomic(Pot1_gpu, Pot);
+    //addAtomic(Pot1_gpu, Pot);
 }
 
-
+//#define NUM_THREADS_PER_BLOCK 128
+//#define SIZE NUM_BLOCKS*NUM_THREADS_PER_BLOCK
 
 void launchPotencialComputeKernel(double **PE) {
     // pointers to the device memory
     double *da[3], *dr[3], *aa[3], *rr[3];
     double *Pot_gpu;
-    const int bytes = SIZE * sizeof(double);
+    const int bytes = N * 3 * sizeof(double);
 
     // Allocate memory on the device
     
@@ -601,7 +629,12 @@ void launchPotencialComputeKernel(double **PE) {
     checkCUDAError("memcpy h->d");
 
     // Launch the kernel
-    PotentialComputeKernel<<<100, 60>>>(da[0], da[1], da[2], dr[0], dr[1], dr[2], N, Pot_gpu);
+    // Launch the kernel
+    dim3 blocksPerGrid((N + num_threads - 1) / num_threads);
+    dim3 threadsPerBlock(num_threads);
+    int sharedMemSize = num_threads * sizeof(double);
+
+    PotentialComputeKernel<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(da[0], da[1], da[2], dr[0], dr[1], dr[2], N, Pot_gpu);
     checkCUDAError("kernel invocation");
 
     // Copy the output to the host
