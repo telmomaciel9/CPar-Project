@@ -80,8 +80,8 @@ void initialize();
 double VelocityVerlet(double dt, int iter, FILE *fp, double* PE);  
 //  Compute Force using F = -dV/dr
 //  solve F = ma for use in Velocity Verlet
-//void computeAccelerations();
-void PotentialCompute();
+void computeAccelerations();
+//void PotentialCompute();
 //  Numerical Recipes function for generation gaussian distribution
 double gaussdist();
 //  Initialize velocities according to user-supplied initial Temperature (Tinit)
@@ -285,13 +285,13 @@ int main()
     //  Based on their positions, calculate the ininial intermolecular forces
     //  The accellerations of each particle will be defined from the forces and their
     //  mass, and this will allow us to update their positions via Newton's law
-    //computeAccelerations();
+    computeAccelerations();
 
     transposeMatrix(r, transpostaR);
     transposeMatrix(a, transpostaA);
 
 
-    PotentialCompute();
+    //PotentialCompute();
     
     // Print number of particles to the trajectory file
     fprintf(tfp,"%i\n",N);
@@ -330,7 +330,8 @@ int main()
         //Press = result[0];
         //Press = VelocityVerlet(dt, i+1, tfp, result);
 
-        double var = VelocityVerlet(dt, i+1, tfp, &PE);
+        double var;
+        var = VelocityVerlet(dt, i+1, tfp, &PE);
         Press = PressFac*var;
         
         //  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -412,6 +413,10 @@ void initialize() {
         for (j=0; j<n; j++) {
             for (k=0; k<n; k++) {
                 if (p<N) {
+                    
+                    //r[p][0] = (i + 0.5)*pos;
+                    //r[p][1] = (j + 0.5)*pos;
+                    //r[p][2] = (k + 0.5)*pos;
 
                     r[p][0] = (i + 0.5)*pos;
                     r[p][1] = (j + 0.5)*pos;
@@ -596,9 +601,7 @@ void launchPotencialComputeKernel(double **PE) {
     checkCUDAError("memcpy h->d");
 
     // Launch the kernel
-    startKernelTime();
     PotentialComputeKernel<<<100, 60>>>(da[0], da[1], da[2], dr[0], dr[1], dr[2], N, Pot_gpu);
-    stopKernelTime();
     checkCUDAError("kernel invocation");
 
     // Copy the output to the host
@@ -637,7 +640,7 @@ double calculateF2(double rSqd){
     return 24 * (2 * invRSqd7 - invRSqd4);
 }
 
-void PotentialCompute(){
+void computeAccelerations(){
     int i, j;
 
     for(int i = 0; i < N; i++){
@@ -696,7 +699,7 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
     //  Update accellerations from updated positions
     //computeAccelerations();
     //result[1] = PotentialCompute();
-    
+    launchPotencialComputeKernel(&Pot);
     //  Update velocity with updated acceleration
     for (i=0; i<N; i++) {
         for (j=0; j<3; j++) {
@@ -713,8 +716,10 @@ double VelocityVerlet(double dt, int iter, FILE *fp,double* Pot) {
             }
         }
     }
+    
 
     return psum/(6*L*L);
+
 }
 
 

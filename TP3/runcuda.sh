@@ -4,4 +4,4 @@
 #SBATCH --partition=cpar     # partition (queue)
 #SBATCH --constraint=k20   # allocation of 40 CPUs
 
-nvprof ./bin/MDpar_cuda < inputdata.txt
+time nvprof ./bin/MDpar_cuda < inputdata.txt
