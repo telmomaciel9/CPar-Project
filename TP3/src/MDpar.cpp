@@ -503,7 +503,7 @@ double PotentialCompute(){
         a[i][2] = 0;
     }
 
-    #pragma omp parallel for reduction(+:a[:N][:3]) reduction(+:Pot)
+    #pragma omp parallel for reduction(+:a[:N][:3]) reduction(+:Pot) schedule(dynamic,50)
     for (int i = 0; i < N; i++) { 
         for (int j = i - 1; j >= 0; j--) {
             double rij[3];
