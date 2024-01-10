@@ -1,5 +1,5 @@
 #!/bin/sh
-#BATCH --time=10:00
+#BATCH --time=15:00
 #SBATCH --partition=cpar
 #SBATCH --constraint=k20
 #SBATCH --ntasks=40
@@ -16,8 +16,8 @@ run_cuda_program() {
     local n=$2
     local output_file="$OUTPUT_DIR/result_${num_threads}.txt"
 
-    echo "\n Running CUDA program for N = $n with $num_threads threads (number of blocks set automatically so that nBlocks*nThreadsPerBlock >= N)"
-    time ./bin/MDpar_cuda $num_threads $n < ./inputdata.txt  > "$output_file"
+    echo "\n Running CUDA program for N = $n with $num_threads threads"
+    nvprof --metrics sm_efficiency,shared_efficiency,achieved_occupancy,warp_execution_efficiency ./bin/MDpar_cuda $num_threads $n < ./inputdata.txt  > "$output_file"
 }
 
 
@@ -33,4 +33,4 @@ do
 done
 
 
-echo "CUDA tests completed. Results stored in $OUTPUT_DIR"
+echo "CUDA tests completed."
